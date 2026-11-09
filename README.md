@@ -1,4 +1,4 @@
-# Meu Ambiente de Estudos
+# EU SEREI BIOLOGO
 
 Aplicativo Android offline-first para organizar disciplinas universitárias, exercícios e progresso. **Versão 0.1: interface demonstrativa.** Nenhum PDF foi importado ainda.
 
@@ -24,11 +24,11 @@ package.json
 ```
 
 ## No GitHub (criar repositório novo)
-1. Criar repositório **meu-ambiente-de-estudos** separado de `As-aventuras-do-Aprendizado`.
+1. Usar repositório **Eu-serei-BIOLOGO** separado de `As-aventuras-do-Aprendizado`.
 2. Enviar os arquivos desta pasta à raiz do repositório na branch `main` (incluindo pasta `.github`).
 3. Ir a **Actions → Construir APK de estudos → Run workflow**.
-4. Quando o workflow terminar, abrir o run e baixar **meu-ambiente-estudos-debug** na seção Artifacts.
-5. Extrair o ZIP de artifact, instalar `app-debug.apk` no Android e autorizar instalação pelo navegador/gerenciador se necessário.
+4. Quando o workflow terminar, abrir o run e baixar **EU_SEREI_BIOLOGO** na seção Artifacts.
+5. Extrair o ZIP de artifact, instalar `EU_SEREI_BIOLOGO.apk` no Android e autorizar instalação pelo navegador/gerenciador se necessário.
 
 > O workflow cria a pasta `android` temporariamente no runner por `npx cap add android`. Não é necessário versionar `android` nesta fase. O APK de debug pode ter assinatura de depuração diferente a cada build: para atualizações instaláveis sem remover o app, configurar uma chave de assinatura estável, armazenada como GitHub Actions Secrets, antes da distribuição contínua. **Não salvar chaves privadas no repositório.**
 
