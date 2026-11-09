@@ -1,0 +1,6 @@
+{
+  "appId": "br.com.estudos.meuambiente",
+  "appName": "Meu Ambiente de Estudos",
+  "webDir": "www",
+  "server": { "androidScheme": "https" }
+}
