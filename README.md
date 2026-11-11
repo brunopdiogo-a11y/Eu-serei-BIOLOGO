@@ -1,46 +1,21 @@
-# EU SEREI BIOLOGO
+# 🌿 EU SEREI BIOLOGO — Web 0.3.0
+Plataforma responsiva de estudos, com navegação separada (Início, Disciplinas, Planejamento, Questões, Progresso e Configurações).
 
-Aplicativo Android offline-first para organizar disciplinas universitárias, exercícios e progresso. **Versão 0.1: interface demonstrativa.** Nenhum PDF foi importado ainda.
+## Implementado
+- Página inicial minimalista, com avisos calculados a partir das metas salvas.
+- Planejamento por disciplina: início, prazo, dias por semana, tempo por sessão, meta de aulas e horário opcional de lembrete.
+- Registro manual de sessões e cronômetro com pausa automática quando a página perde visibilidade.
+- Histórico de tempo por disciplina, indicadores semanais e progresso baseado em dados reais.
+- Backup JSON local e migração compatível com registros anteriores (schemaVersion 1).
+- Lembretes dentro do site e notificações do navegador **somente com permissão e com a página aberta**.
+- Biblioteca preparada para Ecologia Vegetal, ainda sem textos e questões definitivos.
 
-## Conteúdo incluído
-- Dashboard responsivo e biblioteca com três disciplinas exemplificativas (6 aulas cada).
-- Marcação de aulas concluídas; questões demonstrativas; planejamento com data inicial.
-- Persistência local no WebView via localStorage e backup JSON manual.
-- `www/js/sync.js`: interface para sincronização futura; **não existe backend, login nem sincronização real ainda**.
-- GitHub Actions para construir APK debug a partir dos arquivos web.
+## Limitações importantes
+- **Não há sincronização online nem login**, portanto os dados do notebook não aparecem automaticamente no celular.
+- A publicação Web pelo GitHub Pages não executa tarefas em segundo plano. Notificações automáticas com o app fechado requerem PWA/service worker + infraestrutura apropriada ou implementação nativa Android.
+- Os cálculos de ritmo de estudo são estimativas: não mudam prazos sem autorização.
+- Ao limpar dados do navegador, o progresso local pode ser perdido; exporte backups periodicamente.
+- O material de Ecologia Vegetal será importado numa etapa futura, após validação desta estrutura.
 
-## Estrutura
-```text
-www/
-  index.html           Interface
-  styles.css           Estilos
-  js/app.js            Navegação e interações
-  js/data.js           Catálogo e questões demonstrativas
-  js/storage.js        Progresso local + exportação/importação
-  js/sync.js           Contrato para sincronização futura
-.github/workflows/build-apk.yml
-capacitor.config.json
-package.json
-```
-
-## No GitHub (criar repositório novo)
-1. Usar repositório **Eu-serei-BIOLOGO** separado de `As-aventuras-do-Aprendizado`.
-2. Enviar os arquivos desta pasta à raiz do repositório na branch `main` (incluindo pasta `.github`).
-3. Ir a **Actions → Construir APK de estudos → Run workflow**.
-4. Quando o workflow terminar, abrir o run e baixar **EU_SEREI_BIOLOGO** na seção Artifacts.
-5. Extrair o ZIP de artifact, instalar `EU_SEREI_BIOLOGO.apk` no Android e autorizar instalação pelo navegador/gerenciador se necessário.
-
-> O workflow cria a pasta `android` temporariamente no runner por `npx cap add android`. Não é necessário versionar `android` nesta fase. O APK de debug pode ter assinatura de depuração diferente a cada build: para atualizações instaláveis sem remover o app, configurar uma chave de assinatura estável, armazenada como GitHub Actions Secrets, antes da distribuição contínua. **Não salvar chaves privadas no repositório.**
-
-## Testar no computador
-- Node 22+ instalado.
-- `npm install`
-- `npm run dev` (abra http://localhost:4173)
-
-## Próxima etapa: sincronização real
-Escolher e configurar fornecedor (ex.: Supabase ou Firebase), autenticação por usuário, tabelas de aulas/progresso/respostas e regras de acesso. Recomenda-se IDs estáveis por registro, timestamps, fila de operações offline, sincronização incremental, controle de conflitos e exportação de dados. Não adicionar credenciais de servidor sensíveis ao código cliente.
-
-## Observações
-- `localStorage` não substitui backup e pode ser removido quando dados do aplicativo forem apagados ou quando o app for desinstalado.
-- Perguntas e conteúdos presentes são **exemplos**, não transcrições dos PDFs.
-- O APK ainda não foi compilado: o ZIP contém os fontes e workflow para compilação no GitHub Actions.
+## Publicação
+A pasta www é publicada pelo GitHub Pages via .github/workflows/deploy-web.yml e empacotada em APK por .github/workflows/build-apk.yml.
