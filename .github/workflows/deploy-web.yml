@@ -1,0 +1,42 @@
+name: Publicar EU SEREI BIOLOGO Web
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'www/**'
+      - '.github/workflows/deploy-web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Publicar versão Web
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Obter projeto
+        uses: actions/checkout@v4
+      - name: Preparar GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Validar arquivos Web
+        run: |
+          test -f www/index.html
+          test -f www/styles.css
+          test -f www/js/app.js
+      - name: Empacotar site estático
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: www
+      - name: Publicar site
+        id: deployment
+        uses: actions/deploy-pages@v4
