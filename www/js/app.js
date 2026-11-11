@@ -190,4 +190,36 @@ function checkReminders(){
 setInterval(checkReminders,30000);
 $('export').addEventListener('click',()=>{const blob=new Blob([exportState()],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='EU_SEREI_BIOLOGO_backup_'+today()+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),2000);$('backup-status').textContent='Arquivo preparado para download.';});
 $('import').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{const text=await f.text();state=importState(text);render();fillPlan();$('backup-status').textContent='Backup restaurado com sucesso.';}catch(err){$('backup-status').textContent='Erro no backup: '+err.message;}e.target.value='';});
+
+/* Google Drive: conexão explícita, nenhuma credencial secreta armazenada. */
+const gdInput=$('google-client-id'),gdConnect=$('google-connect'),gdSync=$('google-sync'),gdDisconnect=$('google-disconnect'),gdStatus=$('google-sync-status');
+gdInput.value=localStorage.getItem('eu-serei-biologo-google-client-id')||'';
+let driveModule=null;
+gdConnect.addEventListener('click',async()=>{
+ gdConnect.disabled=true;gdStatus.textContent='Abrindo autorização do Google…';
+ try{
+  const clientId=gdInput.value.trim();
+  driveModule=await import('./google-drive-sync.js');
+  await driveModule.connectDrive(clientId);
+  localStorage.setItem('eu-serei-biologo-google-client-id',clientId);
+  gdSync.disabled=false;gdDisconnect.disabled=false;
+  gdStatus.textContent='✅ Conta autorizada neste navegador. Clique em Sincronizar agora.';
+ }catch(err){gdStatus.textContent='⚠️ '+err.message;gdSync.disabled=true;gdDisconnect.disabled=true;}
+ finally{gdConnect.disabled=false;}
+});
+gdSync.addEventListener('click',async()=>{
+ if(!driveModule?.connected())return;
+ gdSync.disabled=true;gdStatus.textContent='Consultando Google Drive e preservando cópia local…';
+ try{
+  const result=await driveModule.syncDrive();
+  state=readState();render();fillPlan();
+  gdStatus.textContent='✅ Sincronizado em '+new Date(result.at).toLocaleString('pt-BR')+'. '+result.plans+' planejamento(s), '+result.sessions+' sessões. Arquivos acadêmicos não enviados.';
+ }catch(err){gdStatus.textContent='⚠️ '+err.message+' Seus dados locais foram mantidos.';}
+ finally{gdSync.disabled=!driveModule?.connected();}
+});
+gdDisconnect.addEventListener('click',()=>{
+ driveModule?.disconnectDrive();gdSync.disabled=true;gdDisconnect.disabled=true;
+ gdStatus.textContent='Google desconectado nesta aba. Seus dados locais permanecem salvos.';
+});
+
 fillSelectors();fillPlan();paintTimer();render();
