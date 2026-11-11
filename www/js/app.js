@@ -20,13 +20,51 @@ function save(){state=writeState(state);render();}
 function navigate(view){if(!$( 'view-'+view))view='home';current=view;document.querySelectorAll('.view').forEach(x=>x.classList.toggle('visible',x.id==='view-'+view));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===view));window.scrollTo({top:0,behavior:'instant'});if(view==='planning')fillPlan();render();}
 document.querySelectorAll('[data-view]').forEach(el=>el.addEventListener('click',()=>navigate(el.dataset.view)));
 $('settings-button').addEventListener('click',()=>navigate('settings'));
+
+/* O material completo fica fora do repositório público. Este painel lê apenas o progresso
+   do estudo quando a página da disciplina roda na MESMA origem. */
+function ecologyCompletedStages(){
+ try{const saved=JSON.parse(localStorage.getItem('ecologia-vegetal-estudos-v1')||'null');return saved?.complete&&typeof saved.complete==='object'?saved.complete:{};}catch{return {};}
+}
+function ecologyStageProgress(){
+ const done=ecologyCompletedStages(),out=[0,0,0,0,0,0];
+ for(const [key,val] of Object.entries(done)){
+  const match=/^e([1-6])_\d+$/.exec(key);
+  if(match&&val)out[Number(match[1])-1]++;
+ }
+ return out;
+}
+function completedStagesFor(c){return c.id==='ecologia-vegetal'?ecologyStageProgress().reduce((a,b)=>a+b,0):0;}
+function completedLessonsFor(c){
+ if(c.id!=='ecologia-vegetal'||!c.stagesPerLesson)return countDone(c.id);
+ const byLesson=ecologyStageProgress();
+ return byLesson.filter((n,i)=>n>=c.stagesPerLesson[i]).length;
+}
+function remainingGoals(c,p){
+ const goal=Math.min(c.lessons,Number(p.lessonGoal)||c.lessons),doneLessons=completedLessonsFor(c);
+ const remainingLessons=Math.max(0,goal-doneLessons);
+ if(!c.stagesPerLesson)return {remainingLessons,remainingStages:null,doneStages:null,totalStages:null};
+ const completed=ecologyStageProgress();let stagesRemaining=0,goalStages=0;
+ for(let i=0;i<goal;i++){goalStages+=c.stagesPerLesson[i];stagesRemaining+=Math.max(0,c.stagesPerLesson[i]-completed[i]);}
+ return {remainingLessons,remainingStages:stagesRemaining,doneStages:goalStages-stagesRemaining,totalStages:goalStages};
+}
+function dailyTarget(c,p){
+ const rem=remainingGoals(c,p),end=toDate(p.end),start=toDate(p.start),current=toDate(today());
+ if(!end||!start||end<start)return {...rem,availableDays:0,lessonsPerDay:0,stagesPerDay:0,late:true};
+ const remainingCalendar=Math.max(0,daysBetween(current,end)+1);
+ const daysPerWeek=Math.max(1,Math.min(7,Number(p.daysPerWeek)||4));
+ /* Estimativa proporcional; futuramente configuraremos os dias exatos da semana. */
+ const availableDays=remainingCalendar?Math.max(1,Math.ceil(remainingCalendar*daysPerWeek/7)):0;
+ return {...rem,availableDays,lessonsPerDay:availableDays?Math.ceil(rem.remainingLessons/availableDays):rem.remainingLessons,stagesPerDay:rem.remainingStages===null?null:availableDays?Math.ceil(rem.remainingStages/availableDays):rem.remainingStages,late:remainingCalendar===0};
+}
+
 function planSummary(c){
- const p=state.plans[c.id];if(!p)return {label:'Sem planejamento',kind:'neutral',expected:0,actual:countDone(c.id),remaining:null};
+ const p=state.plans[c.id];if(!p)return {label:'Sem planejamento',kind:'neutral',expected:0,actual:completedLessonsFor(c),remaining:null};
  const start=toDate(p.start),end=toDate(p.end),date=toDate(today());
- if(!start||!end||end<start)return {label:'Verifique as datas',kind:'attention',expected:0,actual:countDone(c.id),remaining:null};
+ if(!start||!end||end<start)return {label:'Verifique as datas',kind:'attention',expected:0,actual:completedLessonsFor(c),remaining:null};
  const total=Math.max(1,daysBetween(start,end)+1),elapsed=Math.max(0,Math.min(total,daysBetween(start,date)+1));
  const expected=Math.min(p.lessonGoal||c.lessons,Math.floor((p.lessonGoal||c.lessons)*elapsed/total));
- const actual=countDone(c.id);
+ const actual=completedLessonsFor(c);
  const left=daysBetween(date,end);
  let label='Em dia',kind='good';
  if(left<0&&actual<(p.lessonGoal||c.lessons)){label='Prazo encerrado';kind='urgent';}
@@ -44,6 +82,7 @@ function getAlerts(){
  else if(s.kind==='attention')alerts.push({kind:'attention',icon:'🟡',title:c.title+': ritmo de estudo',desc:'Você concluiu '+s.actual+' etapa(s); o ritmo estimado até hoje seria '+s.expected+'.'});
  else if(s.kind==='good')alerts.push({kind:'good',icon:'✅',title:c.title+': planejamento em dia',desc:'Seu ritmo está adequado ao planejamento atual.'});
  });
+ const ecology=courses.find(c=>c.id==='ecologia-vegetal');const ep=state.plans['ecologia-vegetal'];if(ep&&ecology){const d=dailyTarget(ecology,ep);if(!d.late&&d.remainingStages>0)alerts.push({kind:'neutral',icon:'📖',title:'Meta diária · Ecologia Vegetal',desc:'Estude aproximadamente '+d.stagesPerDay+' etapa(s) hoje para acompanhar seu prazo.'});}
  if(!Object.keys(state.plans).length)alerts.push({kind:'neutral',icon:'🌱',title:'Vamos organizar sua primeira matéria?',desc:'Defina as datas de Ecologia Vegetal em Meu Planejamento.'});
  return alerts.sort((a,b)=>({urgent:0,attention:1,neutral:2,good:3}[a.kind]-{urgent:0,attention:1,neutral:2,good:3}[b.kind]));
 }
@@ -51,7 +90,7 @@ function renderHome(){const box=$('home-alerts');box.replaceChildren();if(!state
  getAlerts().slice(0,3).forEach(a=>{const item=document.createElement('article');item.className='notice '+a.kind;const ico=document.createElement('span');ico.className='notice-icon';ico.textContent=a.icon;const info=document.createElement('div');const strong=document.createElement('strong');strong.textContent=a.title;const p=document.createElement('p');p.textContent=a.desc;info.append(strong,p);item.append(ico,info);box.append(item);});}
 function renderCourses(){
  const root=$('course-cards');root.replaceChildren();
- courses.forEach(c=>{const count=countDone(c.id),card=document.createElement('button');card.className='course-card';const icon=document.createElement('span');icon.className='emoji';icon.textContent=c.icon;const name=document.createElement('strong');name.textContent=c.title;const subtitle=document.createElement('small');subtitle.textContent=c.subtitle;const meter=document.createElement('div');meter.className='meter';const progress=document.createElement('i');progress.style.width=(count/c.lessons*100)+'%';meter.append(progress);const number=document.createElement('small');number.textContent=count+' de '+c.lessons+' aulas concluídas';card.append(icon,name,subtitle,meter,number);card.addEventListener('click',()=>showCourse(c));root.append(card);});
+ courses.forEach(c=>{const count=completedLessonsFor(c),card=document.createElement('button');card.className='course-card';const icon=document.createElement('span');icon.className='emoji';icon.textContent=c.icon;const name=document.createElement('strong');name.textContent=c.title;const subtitle=document.createElement('small');subtitle.textContent=c.subtitle;const meter=document.createElement('div');meter.className='meter';const progress=document.createElement('i');progress.style.width=(count/c.lessons*100)+'%';meter.append(progress);const number=document.createElement('small');number.textContent=count+' de '+c.lessons+' aulas concluídas';card.append(icon,name,subtitle,meter,number);card.addEventListener('click',()=>showCourse(c));root.append(card);});
 }
 function showCourse(c){
  if(c.id==='ecologia-vegetal'){
@@ -94,7 +133,7 @@ function renderPlan(){
  $('plan-summary').innerHTML='';
  [['📚 Disciplinas planejadas',String(plans)],['⏱️ Tempo nesta semana',fmtMin(week)],['🎯 Meta semanal',target?fmtMin(target):'—']].forEach(([name,val])=>{const el=document.createElement('div');el.className='metric';const s=document.createElement('small');s.textContent=name;const n=document.createElement('strong');n.textContent=val;el.append(s,n);$('plan-summary').append(el);});
  const list=$('plan-list');list.replaceChildren();
- courses.forEach(c=>{const p=state.plans[c.id],s=planSummary(c),row=document.createElement('div');row.className='plan-row';const top=document.createElement('div'),title=document.createElement('strong'),pill=document.createElement('span');title.textContent=c.icon+' '+c.title;pill.className='status-pill'+(s.kind==='urgent'?' danger':s.kind==='attention'?' warning':'');pill.textContent=s.label;top.append(title,pill);const para=document.createElement('p');para.textContent=p?'De '+formatDate(p.start)+' até '+formatDate(p.end)+' · '+p.daysPerWeek+' dias/semana · '+p.minutesPerSession+' min/sessão · '+fmtMin(studiedMinutes(c.id))+' registrados':'Sem meta definida. Selecione esta matéria no formulário acima.';row.append(top,para);if(p){const meter=document.createElement('div');meter.className='meter';const bar=document.createElement('i');bar.style.width=Math.min(100,countDone(c.id)/p.lessonGoal*100)+'%';meter.append(bar);row.append(meter);}list.append(row);});
+ courses.forEach(c=>{const p=state.plans[c.id],s=planSummary(c),row=document.createElement('div');row.className='plan-row';const top=document.createElement('div'),title=document.createElement('strong'),pill=document.createElement('span');title.textContent=c.icon+' '+c.title;pill.className='status-pill'+(s.kind==='urgent'?' danger':s.kind==='attention'?' warning':'');pill.textContent=s.label;top.append(title,pill);const para=document.createElement('p');para.textContent=p?'De '+formatDate(p.start)+' até '+formatDate(p.end)+' · '+p.daysPerWeek+' dias/semana · '+p.minutesPerSession+' min/sessão · '+fmtMin(studiedMinutes(c.id))+' registrados':'Sem meta definida. Selecione esta matéria no formulário acima.';row.append(top,para);if(p){const meter=document.createElement('div');meter.className='meter';const bar=document.createElement('i');bar.style.width=Math.min(100,completedLessonsFor(c)/p.lessonGoal*100)+'%';meter.append(bar);row.append(meter);const daily=dailyTarget(c,p),dailyRow=document.createElement('p');dailyRow.style.fontWeight='700';dailyRow.style.color='#286d47';dailyRow.textContent=daily.late?(daily.remainingLessons||daily.remainingStages?'Prazo encerrado: revise a meta ou o prazo.':'Meta concluída!'):(daily.remainingStages!==null?'📖 Meta diária: '+daily.stagesPerDay+' etapa(s) ou aproximadamente '+daily.lessonsPerDay+' aula(s) em '+daily.availableDays+' dia(s) de estudo restantes.':'📖 Meta diária: aproximadamente '+daily.lessonsPerDay+' aula(s) em '+daily.availableDays+' dia(s) de estudo restantes.');row.append(dailyRow);}list.append(row);});
  const sess=$('sessions-list');sess.replaceChildren();if(!state.sessions.length){const p=document.createElement('p');p.className='muted';p.textContent='Nenhuma sessão registrada ainda.';sess.append(p);}
  state.sessions.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,10).forEach(s=>{const row=document.createElement('div');row.className='session-row';const left=document.createElement('span');left.textContent=course(s.courseId).title+' · '+({reading:'Leitura',questions:'Questões',review:'Revisão'}[s.type]||'Estudo');const right=document.createElement('small');right.textContent=fmtMin(s.minutes)+' · '+formatDate(s.date);row.append(left,right);sess.append(row);});
  $('inapp-alerts').checked=state.preferences.inAppAlerts;
@@ -102,7 +141,7 @@ function renderPlan(){
 }
 function renderProgress(){
  const root=$('progress-metrics');root.replaceChildren();[['⏱️ Tempo registrado',fmtMin(studiedMinutes())],['📚 Aulas concluídas',String(Object.values(state.completed).filter(Boolean).length)],['🧠 Questões respondidas',String(state.answers.length)]].forEach(([name,val])=>{const el=document.createElement('div');el.className='metric';const small=document.createElement('small');small.textContent=name;const strong=document.createElement('strong');strong.textContent=val;el.append(small,strong);root.append(el);});
- const list=$('progress-courses');list.replaceChildren();courses.forEach(c=>{const row=document.createElement('div');row.className='plan-row';const title=document.createElement('strong');title.textContent=c.icon+' '+c.title;const para=document.createElement('p');para.textContent=countDone(c.id)+' de '+c.lessons+' aulas · '+fmtMin(studiedMinutes(c.id))+' estudados';const meter=document.createElement('div');meter.className='meter';const bar=document.createElement('i');bar.style.width=(countDone(c.id)/c.lessons*100)+'%';meter.append(bar);row.append(title,para,meter);list.append(row);});}
+ const list=$('progress-courses');list.replaceChildren();courses.forEach(c=>{const row=document.createElement('div');row.className='plan-row';const title=document.createElement('strong');title.textContent=c.icon+' '+c.title;const para=document.createElement('p');para.textContent=completedLessonsFor(c)+' de '+c.lessons+' aulas · '+fmtMin(studiedMinutes(c.id))+' estudados';const meter=document.createElement('div');meter.className='meter';const bar=document.createElement('i');bar.style.width=(completedLessonsFor(c)/c.lessons*100)+'%';meter.append(bar);row.append(title,para,meter);list.append(row);});}
 function render(){renderHome();renderCourses();renderPlan();renderProgress();}
 function addSession(id,type,minutes,date){
  if(!Number.isFinite(minutes)||minutes<=0||minutes>720)throw Error('Tempo inválido');
