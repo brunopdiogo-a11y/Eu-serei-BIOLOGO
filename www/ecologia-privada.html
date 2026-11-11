@@ -9,7 +9,7 @@ import {readEcologia} from './js/private-library.js';
 const storageKey='estudos:v1';
 let running=false,last=0,pendingMs=0,shownMs=0,ticker;
 const $=id=>document.getElementById(id);
-function display(){const s=Math.floor(shownMs/1000);$('elapsed').textContent=[Math.floor(s/3600),Math.floor(s/60)%60,s%60].map(v=>String(v).padStart(2,'0')).join(':');$('toggle').textContent=running?'⏸ Pausar':'▶ Continuar';$('clock-status').textContent=running?'Estudando · tempo contabilizado':'Pausado';}
+function display(){const s=Math.floor(shownMs/1000);$('elapsed').textContent=[Math.floor(s/3600),Math.floor(s/60)%60,s%60].map(v=>String(v).padStart(2,'0')).join(':');$('toggle').textContent=running?'⏸ Pausar':shownMs?'▶ Continuar':'▶ Iniciar';$('clock-status').textContent=running?'Estudando · tempo contabilizado':'Pausado';}
 function checkpoint(){if(!running)return;const n=performance.now(),diff=Math.max(0,n-last);last=n;pendingMs+=diff;shownMs+=diff;if(pendingMs>=5000)commit();display();}
 function commit(){const m=pendingMs/60000;if(m<=0)return;try{const s=JSON.parse(localStorage.getItem(storageKey)||'{}');if(!Array.isArray(s.sessions))s.sessions=[];const d=new Date(),date=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');const id=crypto.randomUUID?.()||('study-'+Date.now()+'-'+Math.random());s.sessions.push({id,courseId:'ecologia-vegetal',type:'reading',minutes:Math.round(m*10000)/10000,date,createdAt:new Date().toISOString(),source:'private-reader'});s.schemaVersion=1;s.updatedAt=new Date().toISOString();localStorage.setItem(storageKey,JSON.stringify(s));pendingMs=0;}catch(err){$('clock-status').textContent='Falha ao salvar · faça backup';}}
 function pause(){checkpoint();running=false;clearInterval(ticker);commit();display();}
@@ -22,7 +22,7 @@ try{
  const entry=await readEcologia();if(!entry)throw Error('Material não encontrado. Volte à biblioteca e importe o HTML completo de Ecologia Vegetal.');
  // Documento escolhido pelo usuário, não publicado no GitHub.
  const frame=$('reader');frame.srcdoc=entry.html;frame.classList.remove('hide');$('clock').classList.remove('hide');$('message').remove();display();
- // Iniciar automaticamente a medição quando a aula abre.
- resume();
+ // O estudante inicia a contagem manualmente no botão Iniciar.
+ // Ao ocultar, fechar a aba ou sair da página, a sessão é pausada e registrada.
 }catch(err){$('message').textContent='Não foi possível abrir: '+err.message;}
 </script></body></html>
