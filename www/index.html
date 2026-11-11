@@ -95,8 +95,25 @@
   <div class="page-heading"><div class="eyebrow">PREFERÊNCIAS</div><h1>⚙️ Configurações</h1><p>Gerencie seus dados e acompanhe a futura sincronização entre dispositivos.</p></div>
   <section class="card"><h2>💾 Backup e restauração</h2><p class="muted">Os dados são salvos neste dispositivo. Exporte um backup antes de limpar o navegador ou trocar de celular.</p>
     <div class="button-row"><button class="btn secondary" id="export">⬇ Exportar backup</button><label class="btn secondary file-label">⬆ Importar backup<input type="file" id="import" accept=".json,application/json" hidden></label></div><p id="backup-status" class="feedback"></p></section>
-  <section class="card"><h2>☁️ Sincronização entre dispositivos</h2><p class="muted">Ainda não conectada. A versão atual funciona offline e não transfere dados automaticamente entre notebook e celular. A futura sincronização terá login e controle de conflitos.</p><button class="btn ghost" disabled>Sincronizar — em desenvolvimento</button></section>
-  <section class="card"><h2>ℹ️ Sobre</h2><p class="muted">EU SEREI BIOLOGO · Web 0.3.0 · Estrutura preparada para receber Ecologia Vegetal.</p></section>
+  <section class="card"><h2>☁️ Sincronização com Google Drive</h2>
+  <p class="muted">Conecte sua conta Google para compartilhar <strong>planejamento, sessões e progresso</strong> entre notebook e celular. Os arquivos completos de Ecologia Vegetal continuam privados e separados.</p>
+  <p class="muted">Antes da primeira sincronização, recomendamos exportar um backup. O Google Drive armazenará os registros numa área de dados oculta do aplicativo.</p>
+  <label class="field">ID OAuth do aplicativo Web (Google Cloud)
+    <input id="google-client-id" type="text" autocomplete="off" spellcheck="false" placeholder="123456789-abc.apps.googleusercontent.com" style="width:100%;padding:11px;border:1px solid #dfe6df;border-radius:9px">
+  </label>
+  <p class="muted">O Client ID identifica a plataforma e não é uma senha. Não cole aqui um Client Secret nem arquivos de credenciais.</p>
+  <div class="button-row">
+    <button class="btn secondary" id="google-connect">🔐 Conectar Google</button>
+    <button class="btn primary" id="google-sync" disabled>🔄 Sincronizar agora</button>
+    <button class="btn ghost" id="google-disconnect" disabled>Desconectar</button>
+  </div>
+  <p class="feedback" role="status" id="google-sync-status">Aguardando configuração do Google Cloud.</p>
+  <details><summary style="cursor:pointer;color:#326e47;font-weight:700;font-size:13px">Como configurar pela primeira vez</summary>
+  <p class="muted">No <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer">Google Cloud Console</a>, crie um projeto, habilite a Google Drive API e configure a tela de consentimento OAuth (inclua sua conta como usuário de teste, caso o aplicativo esteja em modo de testes). Em Google Auth Platform → Clients, crie um ID OAuth do tipo <strong>Aplicativo Web</strong>. Em <strong>Origens JavaScript autorizadas</strong>, adicione <code>https://brunopdiogo-a11y.github.io</code> — sem o caminho do repositório. Cole o Client ID no campo acima e clique em Conectar Google.</p>
+  </details>
+  <p class="muted">Nesta primeira etapa, a sincronização é <strong>manual</strong>. Os dados permanecem salvos no navegador mesmo sem login; não feche a aba durante a sincronização. Alterações simultâneas nos dois dispositivos exigem cuidado até implementarmos uma fila e controle de conflitos avançado.</p>
+  </section>
+  <section class="card"><h2>ℹ️ Sobre</h2><p class="muted">EU SEREI BIOLOGO · Web 0.4.0 · Estrutura preparada para receber Ecologia Vegetal.</p></section>
 </section>
 </main>
 </div>
