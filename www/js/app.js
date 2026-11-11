@@ -54,6 +54,13 @@ function renderCourses(){
  courses.forEach(c=>{const count=countDone(c.id),card=document.createElement('button');card.className='course-card';const icon=document.createElement('span');icon.className='emoji';icon.textContent=c.icon;const name=document.createElement('strong');name.textContent=c.title;const subtitle=document.createElement('small');subtitle.textContent=c.subtitle;const meter=document.createElement('div');meter.className='meter';const progress=document.createElement('i');progress.style.width=(count/c.lessons*100)+'%';meter.append(progress);const number=document.createElement('small');number.textContent=count+' de '+c.lessons+' aulas concluídas';card.append(icon,name,subtitle,meter,number);card.addEventListener('click',()=>showCourse(c));root.append(card);});
 }
 function showCourse(c){
+ if(c.id==='ecologia-vegetal'){
+   fetch('./ecologia-vegetal.html',{method:'HEAD'}).then(r=>{
+     if(r.ok){window.location.href='./ecologia-vegetal.html';}
+     else {notify('O material completo ainda não foi publicado neste site.');}
+   }).catch(()=>notify('O material completo ainda não está disponível nesta instalação.'));
+   return;
+ }
  selectedCourse=c.id;const detail=$('course-detail');detail.classList.remove('hidden');detail.replaceChildren();const title=document.createElement('h2');title.textContent=c.icon+' '+c.title;detail.append(title);
  const desc=document.createElement('p');desc.className='muted';desc.textContent='Estrutura inicial. O conteúdo de cada aula será importado e revisado em uma próxima etapa. Por enquanto, não há aulas disponíveis para marcar como concluídas.';detail.append(desc);
  const go=document.createElement('button');go.className='btn secondary';go.textContent='📅 Planejar esta disciplina';go.addEventListener('click',()=>{navigate('planning');$('plan-course').value=c.id;fillPlan();});detail.append(go);
