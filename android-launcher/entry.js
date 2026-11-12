@@ -1,7 +1,7 @@
 import { Browser } from '@capacitor/browser';
 import { LocalNotifications } from '@capacitor/local-notifications';
 const WEB='https://brunopdiogo-a11y.github.io/Eu-serei-BIOLOGO/';
-const KEY='eu-serei-biologo-reminders-v1', INTERVAL=15*60*1000, MAX=4;
+const KEY='eu-serei-biologo-reminders-v1', ENABLED_KEY='eu-serei-biologo-reminders-enabled-v1', INTERVAL=15*60*1000, MAX=4;
 const $=id=>document.getElementById(id);
 const courses={'ecologia-vegetal':'Ecologia Vegetal','sensoriamento':'Sensoriamento Remoto','inventariamento':'Inventariamento de Flora'};
 let current=null, actionBusy=false;
@@ -96,7 +96,8 @@ $('done').addEventListener('click',async()=>{try{await cancelScheduled();await c
 $('cancel').addEventListener('click',async()=>{try{await cancelScheduled();await clearDelivered();save(null);report('Cobrança cancelada.');}catch(err){report('⚠️ '+err.message);}});
 $('snooze').addEventListener('click',async()=>{try{await snooze(current?.fromSeq||1);}catch(err){report('⚠️ '+err.message);}});
 $('enabled').addEventListener('change',async e=>{
- if(e.target.checked){report('Cobrança ativada. Programe um horário.');return;}
+ if(e.target.checked){localStorage.setItem(ENABLED_KEY,'true');report('Cobrança ativada. Programe um horário.');return;}
+ localStorage.setItem(ENABLED_KEY,'false');
  try{await cancelScheduled();await clearDelivered();save(null);report('Cobrança desativada.');}catch(err){report('⚠️ '+err.message);}
 });
 $('permission').addEventListener('click',async()=>{
@@ -143,6 +144,7 @@ async function setup(){
  const d=new Date();d.setMinutes(d.getMinutes()+2);d.setSeconds(0,0);
  const pad=x=>String(x).padStart(2,'0');
  $('reminder-time').value=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+ $('enabled').checked=localStorage.getItem(ENABLED_KEY)!=='false';
  current=store();render();
  try{
   await LocalNotifications.registerActionTypes({types:[{
