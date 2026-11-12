@@ -40,6 +40,17 @@ jobs:
           node -e "const fs=require('fs');const cfg=JSON.parse(fs.readFileSync('capacitor.config.json'));cfg.webDir='android-launcher';fs.writeFileSync('capacitor.config.json',JSON.stringify(cfg,null,2))"
       - name: Criar projeto Android
         run: npx cap add android
+      - name: Autorizar uso de alarmes Android
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android/app/src/main/AndroidManifest.xml')
+          s=p.read_text()
+          permission='<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />'
+          if permission not in s:
+              s=s.replace('<application',permission+'\n    <application',1)
+              p.write_text(s)
+          PY
       - name: Sincronizar aplicativo
         run: npx cap sync android
       - name: Aplicar ícone oficial Android
@@ -49,6 +60,9 @@ jobs:
           test -f android/app/src/main/assets/capacitor.plugins.json
           cat android/app/src/main/assets/capacitor.plugins.json
           grep -q 'BrowserPlugin' android/app/src/main/assets/capacitor.plugins.json
+          grep -q 'LocalNotificationsPlugin' android/app/src/main/assets/capacitor.plugins.json
+      - name: Validar lembretes JavaScript
+        run: node --check android-launcher/entry.js
       - name: Compilar APK de teste
         working-directory: android
         run: bash ./gradlew assembleDebug --no-daemon
