@@ -223,3 +223,12 @@ gdDisconnect.addEventListener('click',()=>{
 });
 
 fillSelectors();fillPlan();paintTimer();render();
+function openDeepLink(){
+ const view=location.hash.replace(/^#/,'').split('?')[0];
+ if(['home','courses','planning','questions','progress','settings'].includes(view)){
+  navigate(view);
+  if(view==='planning'){$('plan-course').value='ecologia-vegetal';fillPlan();}
+ }
+}
+window.addEventListener('hashchange',openDeepLink);
+openDeepLink();
