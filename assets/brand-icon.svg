@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1254 1254" role="img" aria-label="EU SEREI BIOLOGO: ramo branco com anel laranja em fundo verde">
+<defs><linearGradient id="forest" x1="0" y1="0" x2=".2" y2="1"><stop offset="0" stop-color="#087d1b"/><stop offset=".55" stop-color="#006b12"/><stop offset="1" stop-color="#00530c"/></linearGradient></defs>
+<rect width="1254" height="1254" rx="250" fill="url(#forest)"/>
+<circle cx="619" cy="623" r="499" fill="none" stroke="#ff8900" stroke-width="48"/>
+<path fill="#fff" d="M807 241 L701 297 L651 351 L639 391 L643 503 L588 627 L593 523 L575 458 L519 399 L440 364 L457 522 L486 560 L555 598 L573 632 L568 683 L519 834 L509 725 L474 661 L413 627 L314 617 L375 758 L417 790 L483 808 L505 833 L504 885 L444 1029 L482 1027 L526 910 L560 872 L595 865 L688 879 L729 871 L770 847 L854 757 L736 732 L660 743 L618 769 L532 871 L572 737 L616 679 L663 654 L763 657 L820 641 L864 605 L933 518 L826 504 L745 518 L691 558 L643 636 L588 682 L659 509 L759 448 L798 399 L812 338 Z"/>
+</svg>
