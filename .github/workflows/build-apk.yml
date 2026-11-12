@@ -6,6 +6,8 @@ on:
     paths:
       - 'www/**'
       - 'android-launcher/**'
+      - 'assets/**'
+      - 'scripts/**'
       - 'package*.json'
       - 'capacitor.config.json'
       - '.github/workflows/build-apk.yml'
@@ -35,6 +37,8 @@ jobs:
         run: npx cap add android
       - name: Sincronizar aplicativo
         run: npx cap sync android
+      - name: Aplicar ícone oficial Android
+        run: node scripts/generate-android-icons.mjs
       - name: Confirmar registro nativo do Browser
         run: |
           test -f android/app/src/main/assets/capacitor.plugins.json
