@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'www/**'
+      - 'android-launcher/**'
       - 'package*.json'
       - 'capacitor.config.json'
       - '.github/workflows/build-apk.yml'
@@ -26,6 +27,11 @@ jobs:
       - uses: android-actions/setup-android@v4
       - name: Instalar dependências
         run: npm install --no-audit --no-fund
+      - name: Preparar acesso Web seguro no Android
+        run: |
+          npm install --no-save --no-audit --no-fund @capacitor/browser@8 esbuild
+          npx esbuild android-launcher/entry.js --bundle --format=iife --platform=browser --outfile=android-launcher/main.js
+          node -e "const fs=require('fs');const cfg=JSON.parse(fs.readFileSync('capacitor.config.json'));cfg.webDir='android-launcher';fs.writeFileSync('capacitor.config.json',JSON.stringify(cfg,null,2))"
       - name: Criar projeto Android
         run: npx cap add android
       - name: Sincronizar aplicativo
