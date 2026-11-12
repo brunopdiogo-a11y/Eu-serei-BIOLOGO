@@ -1,6 +1,6 @@
 {
   "name": "eu-serei-biologo",
-  "version": "0.1.0",
+  "version": "0.5.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,10 +11,12 @@
   },
   "dependencies": {
     "@capacitor/core": "8.6.0",
-    "@capacitor/android": "8.6.0"
+    "@capacitor/android": "8.6.0",
+    "@capacitor/browser": "8.0.5"
   },
   "devDependencies": {
     "@capacitor/cli": "8.6.0",
-    "serve": "14.2.5"
+    "serve": "14.2.5",
+    "esbuild": "^0.25.12"
   }
 }
