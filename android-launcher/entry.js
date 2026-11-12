@@ -5,7 +5,7 @@ const message=document.getElementById('message');
 button.addEventListener('click',async()=>{
  button.disabled=true;
  try{await Browser.open({url:URL,toolbarColor:'#25764a'});}
- catch(err){message.textContent='Falha ao abrir: '+(err?.message||'verifique o navegador.');}
+ catch(err){message.textContent='Não foi possível abrir a aba integrada. Use o acesso direto abaixo.';const a=document.createElement('a');a.href=URL;a.target='_blank';a.rel='noopener noreferrer';a.textContent='🌐 Abrir no Chrome';a.style.cssText='display:block;margin-top:12px;color:#196a40;font-weight:700';message.append(a);}
  finally{button.disabled=false;}
 });
 document.getElementById('help').addEventListener('click',()=>{
