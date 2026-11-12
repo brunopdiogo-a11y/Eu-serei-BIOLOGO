@@ -11,7 +11,7 @@ export function initStageSpeech(frame, root) {
   const select = $('voice-selection'), rate = $('voice-rate');
   const label = $('voice-stage'), paragraphLabel = $('voice-paragraph');
   let stages = [], stageIndex = -1, parts = [], partIndex = 0;
-  let active = false, paused = false, token = 0, utterance = null;
+  let active = false, paused = false, token = 0, utterance = null, betweenPhrasesTimer = null;
   let observer = null, viewObserver = null;
   const preferences = (()=>{try{return JSON.parse(localStorage.getItem('eusereibiologo-speech-v1')||'{}');}catch{return {};}})();
   if (preferences.rate >= .7 && preferences.rate <= 1.5) rate.value = String(preferences.rate);
@@ -26,23 +26,39 @@ export function initStageSpeech(frame, root) {
     paragraphLabel.textContent = parts.length ? 'Trecho '+Math.min(parts.length,partIndex+1)+' de '+parts.length : 'Selecione uma etapa';
   }
   // SpeechSynthesizer on Android may not reliably handle lengthy paragraphs.
+  // Frases completas: preservam pontuação original para a prosódia do motor.
+  // Evitamos cortes arbitrários em 190 caracteres, que interrompiam a leitura.
   function splitText(text){
     const clean=String(text||'').replace(/\s+/g,' ').trim();
-    const sentences=clean.match(/[^.!?;]+[.!?;]+|[^.!?;]+$/g)||[clean];
-    const pieces=[];let buffer='';
-    for(let sentence of sentences){
-      sentence=sentence.trim();if(!sentence)continue;
-      if(sentence.length>220){
-        if(buffer){pieces.push(buffer);buffer='';}
-        const words=sentence.split(/\s+/);let seg='';
-        for(const word of words){if((seg+' '+word).length>190&&seg){pieces.push(seg);seg='';}seg+=(seg?' ':'')+word;}
-        if(seg)pieces.push(seg);continue;
+    if(!clean)return [];
+    const output=[];
+    // Fim de frase ou ponto-e-vírgula. Não separa números decimais como "3.5".
+    const phrases=clean.match(/.*?(?:[!?;]+(?:["”’)]*)|(?<!\d)\.(?!\d)(?:["”’)]*)|$)(?=\s|$)/gu)?.filter(x=>x.trim())||[clean];
+    for(const raw of phrases){
+      const phrase=raw.trim();
+      if(phrase.length<=260){output.push({text:phrase,pause:/[.!?]["”’)]*$/.test(phrase)?320:210});continue;}
+      // Frases muito extensas: primeiro separar nas vírgulas, respeitando a oração.
+      let buffer='';
+      const clauses=phrase.split(/(?<=,)\s+/u);
+      for(const clause of clauses){
+        if((buffer+' '+clause).trim().length>260&&buffer){
+          output.push({text:buffer,pause:180});buffer='';
+        }
+        if(clause.length>260){
+          if(buffer){output.push({text:buffer,pause:180});buffer='';}
+          // Último recurso: cortar apenas no espaço entre palavras.
+          let segment='';
+          for(const word of clause.split(/\s+/)){
+            if(segment&&(segment+' '+word).length>260){output.push({text:segment,pause:90});segment='';}
+            segment+=(segment?' ':'')+word;
+          }
+          buffer=segment;
+        }else buffer+=(buffer?' ':'')+clause;
       }
-      if((buffer+' '+sentence).length>220&&buffer){pieces.push(buffer);buffer='';}
-      buffer+=(buffer?' ':'')+sentence;
+      if(buffer)output.push({text:buffer,pause:/[.!?]["”’)]*$/.test(buffer)?320:210});
     }
-    if(buffer)pieces.push(buffer);
-    return pieces;
+    if(output.length)output[output.length-1].pause=480; // respirar entre parágrafos
+    return output;
   }
   function frameStage(){
     try{
@@ -55,6 +71,7 @@ export function initStageSpeech(frame, root) {
   }
   function stopSpeech(keepPosition=false){
     token++;active=false;paused=false;utterance=null;
+    clearTimeout(betweenPhrasesTimer);betweenPhrasesTimer=null;
     try{synth?.cancel();}catch{}
     if(!keepPosition)partIndex=0;
     resetButtons();
@@ -76,7 +93,7 @@ export function initStageSpeech(frame, root) {
   function speakCurrent(){
     if(!active||partIndex>=parts.length){stopSpeech();setStatus('Leitura concluída.');return;}
     const thisToken=token;
-    utterance=new SpeechSynthesisUtterance(parts[partIndex]);
+    utterance=new SpeechSynthesisUtterance(parts[partIndex].text);
     const voice=select.options[select.selectedIndex];
     const voiceId=voice?.value;
     const chosen=synth.getVoices().find(v=>v.voiceURI===voiceId);
@@ -86,7 +103,14 @@ export function initStageSpeech(frame, root) {
     utterance.pitch=1;
     utterance.onend=()=>{
       if(!active||token!==thisToken)return;
-      partIndex++;resetButtons();speakCurrent();
+      const delay=parts[partIndex]?.pause??250;
+      partIndex++;resetButtons();
+      betweenPhrasesTimer=setTimeout(()=>{
+        betweenPhrasesTimer=null;
+        if(!active||token!==thisToken)return;
+        if(paused)return;
+        speakCurrent();
+      },delay);
     };
     utterance.onerror=e=>{
       if(token!==thisToken||!active)return;
@@ -102,8 +126,8 @@ export function initStageSpeech(frame, root) {
     updateStage();
     if(!parts.length){setStatus('Abra uma etapa de leitura para ouvir o conteúdo.');return;}
     if(active){
-      if(paused){paused=false;try{synth.resume();}catch{}setStatus('Leitura retomada.');}
-      else{paused=true;try{synth.pause();}catch{}setStatus('Leitura pausada.');}
+      if(paused){paused=false;try{synth.resume();}catch{}if(!synth.speaking&&!betweenPhrasesTimer)speakCurrent();setStatus('Leitura retomada.');}
+      else{paused=true;clearTimeout(betweenPhrasesTimer);betweenPhrasesTimer=null;try{synth.pause();}catch{}setStatus('Leitura pausada.');}
       resetButtons();return;
     }
     token++;active=true;paused=false;try{synth.cancel();}catch{}
