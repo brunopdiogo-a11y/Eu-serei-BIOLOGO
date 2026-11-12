@@ -29,6 +29,11 @@ jobs:
       - uses: android-actions/setup-android@v4
       - name: Instalar dependências
         run: npm install --no-audit --no-fund
+      - name: Validar módulos JavaScript Web
+        run: |
+          node --check www/js/voice-reader.js
+          node --check www/js/app.js
+          node --check www/js/private-library.js
       - name: Preparar acesso Web seguro no Android
         run: |
           npx esbuild android-launcher/entry.js --bundle --format=iife --platform=browser --outfile=android-launcher/main.js
