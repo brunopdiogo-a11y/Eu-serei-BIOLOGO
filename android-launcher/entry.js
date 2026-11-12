@@ -90,7 +90,12 @@ async function openWeb(){
  }finally{$('open').disabled=false;}
 }
 $('open').addEventListener('click',openWeb);
-$('help').addEventListener('click',()=>$('message').textContent='O Drive sincroniza o progresso na plataforma Web. Os alarmes são configurados neste APK e armazenados somente neste celular. A sincronização automática dos alarmes com as metas Web virá numa próxima etapa.');
+const remindersDialog=$('reminders-dialog');
+$('open-reminders').addEventListener('click',()=>remindersDialog.showModal());
+$('close-reminders').addEventListener('click',()=>remindersDialog.close());
+remindersDialog.addEventListener('click',e=>{
+ if(e.target===remindersDialog)remindersDialog.close();
+});
 $('study-now').addEventListener('click',openWeb);
 $('done').addEventListener('click',async()=>{try{await cancelScheduled();await clearDelivered();save(null);report('✅ Cobrança encerrada por sua confirmação de início do estudo.');}catch(err){report('⚠️ '+err.message);}});
 $('cancel').addEventListener('click',async()=>{try{await cancelScheduled();await clearDelivered();save(null);report('Cobrança cancelada.');}catch(err){report('⚠️ '+err.message);}});
