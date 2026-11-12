@@ -97,8 +97,11 @@ export function initStageSpeech(frame, root) {
     const voice=select.options[select.selectedIndex];
     const voiceId=voice?.value;
     const chosen=synth.getVoices().find(v=>v.voiceURI===voiceId);
-    if(chosen)utterance.voice=chosen;
-    utterance.lang=chosen?.lang||'pt-BR';
+    if(!chosen || String(chosen.lang||'').replace(/_/g,'-').toLowerCase()!=='pt-br'){
+      stopSpeech(true);setStatus('Escolha uma voz em português do Brasil.');return;
+    }
+    utterance.voice=chosen;
+    utterance.lang='pt-BR';
     utterance.rate=Number(rate.value);
     utterance.pitch=1;
     utterance.onend=()=>{
@@ -125,12 +128,22 @@ export function initStageSpeech(frame, root) {
     if(!synth){setStatus('Este navegador não suporta leitura de voz.');return;}
     updateStage();
     if(!parts.length){setStatus('Abra uma etapa de leitura para ouvir o conteúdo.');return;}
-    if(active){
-      if(paused){paused=false;try{synth.resume();}catch{}if(!synth.speaking&&!betweenPhrasesTimer)speakCurrent();setStatus('Leitura retomada.');}
-      else{paused=true;clearTimeout(betweenPhrasesTimer);betweenPhrasesTimer=null;try{synth.pause();}catch{}setStatus('Leitura pausada.');}
+    if(!select.value){setStatus('Nenhuma voz em português do Brasil disponível neste aparelho. Instale ou ative uma voz pt-BR no mecanismo de fala do Android.');return;}
+    if(active && !paused){
+      // Em certos Androids SpeechSynthesis.pause() não permite retomar.
+      // Cancelamos o trecho atual e preservamos o índice para retomá-lo.
+      token++;paused=true;
+      clearTimeout(betweenPhrasesTimer);betweenPhrasesTimer=null;
+      try{synth.cancel();}catch{}
+      utterance=null;
+      setStatus('Leitura pausada. Continuar retomará o trecho atual.');
       resetButtons();return;
     }
-    token++;active=true;paused=false;try{synth.cancel();}catch{}
+    // Tanto ao iniciar quanto ao continuar criamos uma nova utterance:
+    // evita o travamento de resume() em alguns motores Android.
+    token++;active=true;paused=false;
+    clearTimeout(betweenPhrasesTimer);betweenPhrasesTimer=null;
+    try{synth.cancel();}catch{}
     speakCurrent();
   }
   function move(delta){
@@ -140,18 +153,20 @@ export function initStageSpeech(frame, root) {
   }
   function voices(){
     if(!synth)return;
-    const all=synth.getVoices().filter(v=>/^pt(?:-|$)/i.test(v.lang));
-    const other=synth.getVoices();
-    const pool=all.length?all:other;
+    const pool=synth.getVoices().filter(v=>String(v.lang||'').replace(/_/g,'-').toLowerCase()==='pt-br');
+    const before=select.value;
     select.replaceChildren();
     for(const v of pool){
       const option=document.createElement('option');option.value=v.voiceURI;
-      option.textContent=v.name+' ('+v.lang+')'+(v.localService?' · dispositivo':'');
+      option.textContent=v.name+' (Português do Brasil)'+(v.localService?' · dispositivo':'');
       select.append(option);
     }
-    const preferred=pool.find(v=>v.voiceURI===preferences.voice)||pool.find(v=>/^pt-BR$/i.test(v.lang))||pool[0];
-    if(preferred)select.value=preferred.voiceURI;
-    if(!pool.length)setStatus('Nenhuma voz disponível. Verifique o mecanismo de fala do aparelho.');
+    const preferred=pool.find(v=>v.voiceURI===before)||pool.find(v=>v.voiceURI===preferences.voice)||pool[0];
+    if(preferred){select.value=preferred.voiceURI;select.disabled=false;start.disabled=false;}
+    else{
+      select.disabled=true;start.disabled=true;
+      setStatus('Nenhuma voz pt-BR encontrada. Verifique as vozes instaladas nas configurações de síntese de voz do Android.');
+    }
   }
   start.addEventListener('click',begin);
   stopButton.addEventListener('click',()=>{stopSpeech();setStatus('Leitura interrompida.');});
