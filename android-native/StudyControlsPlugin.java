@@ -31,8 +31,8 @@ public class StudyControlsPlugin extends Plugin {
         intent.putExtra("total",call.getInt("total",1));
         intent.putExtra("title",call.getString("title","Ecologia Vegetal"));
         try {
-            if(Build.VERSION.SDK_INT>=26)getContext().startForegroundService(intent);
-            else getContext().startService(intent);
+            if(StudyControlsService.running||Build.VERSION.SDK_INT<26)getContext().startService(intent);
+            else getContext().startForegroundService(intent);
             call.resolve();
         }catch(Exception e){call.reject("Não foi possível mostrar controles de áudio: "+e.getMessage());}
     }
