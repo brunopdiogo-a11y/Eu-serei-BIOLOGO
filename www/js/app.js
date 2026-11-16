@@ -152,7 +152,6 @@ function renderPlan(){
  const sess=$('sessions-list');sess.replaceChildren();if(!state.sessions.length){const p=document.createElement('p');p.className='muted';p.textContent='Nenhuma sessão registrada ainda.';sess.append(p);}
  state.sessions.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,10).forEach(s=>{const row=document.createElement('div');row.className='session-row';const left=document.createElement('span');left.textContent=course(s.courseId).title+' · '+({reading:'Leitura',questions:'Questões',review:'Revisão'}[s.type]||'Estudo');const right=document.createElement('small');right.textContent=fmtMin(s.minutes)+' · '+formatDate(s.date);row.append(left,right);sess.append(row);});
  $('inapp-alerts').checked=state.preferences.inAppAlerts;
- $('browser-alerts').checked=state.preferences.browserAlerts;
 }
 function renderProgress(){
  const root=$('progress-metrics');root.replaceChildren();[['⏱️ Tempo registrado',fmtMin(studiedMinutes())],['📚 Aulas concluídas',String(Object.values(state.completed).filter(Boolean).length)],['🧠 Questões respondidas',String(state.answers.length)]].forEach(([name,val])=>{const el=document.createElement('div');el.className='metric';const small=document.createElement('small');small.textContent=name;const strong=document.createElement('strong');strong.textContent=val;el.append(small,strong);root.append(el);});
@@ -172,11 +171,6 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&timerRunni
 $('manual-date').value=today();
 $('manual-form').addEventListener('submit',e=>{e.preventDefault();const m=Number($('manual-minutes').value),d=$('manual-date').value;if(!d||!Number.isInteger(m)||m<1||m>720){notify('Informe data e tempo válidos.');return;}addSession($('session-course').value,$('session-type').value,m,d);$('manual-minutes').value='';notify('Sessão adicionada ao histórico.');});
 $('inapp-alerts').addEventListener('change',e=>{state.preferences.inAppAlerts=e.target.checked;save();});
-$('browser-alerts').addEventListener('change',async e=>{
- if(e.target.checked){if(!('Notification' in window)||!window.isSecureContext){e.target.checked=false;$('notice-permission').textContent='Este navegador não oferece notificações neste contexto.';return;}
- try{const perm=await Notification.requestPermission();if(perm!=='granted'){e.target.checked=false;$('notice-permission').textContent='Permissão não concedida.';return;}}catch{e.target.checked=false;$('notice-permission').textContent='Não foi possível solicitar permissão.';return;}}
- state.preferences.browserAlerts=e.target.checked;save();$('notice-permission').textContent='Preferência salva. Para agendar cobranças persistentes, utilize o APK Android.';
-});
 // As cobranças são globais e não fazem parte dos planos por disciplina.
 $('export').addEventListener('click',()=>{const blob=new Blob([exportState()],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='EU_SEREI_BIOLOGO_backup_'+today()+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),2000);$('backup-status').textContent='Arquivo preparado para download.';});
 $('import').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{const text=await f.text();state=importState(text);render();fillPlan();$('backup-status').textContent='Backup restaurado com sucesso.';}catch(err){$('backup-status').textContent='Erro no backup: '+err.message;}e.target.value='';});
