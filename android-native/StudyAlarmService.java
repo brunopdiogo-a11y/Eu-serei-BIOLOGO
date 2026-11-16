@@ -71,8 +71,8 @@ public class StudyAlarmService extends Service {
   if(!START.equals(intent.getAction()))return START_NOT_STICKY;
   base=intent.getIntExtra("base",-1);seq=intent.getIntExtra("seq",0);
   var prefs=getSharedPreferences(StudyAlarmPlugin.PREF,Context.MODE_PRIVATE);
-  if(base<1||base!=prefs.getInt("base",-1)) {stopSelf();return START_NOT_STICKY;}
-  String course=prefs.getString("course","Estudo");
+  if((base!=0)&&(base<1||base!=prefs.getInt("base",-1))) {stopSelf();return START_NOT_STICKY;}
+  String course=base==0?"Teste do alarme":prefs.getString("course","Estudo");
   try{
    Notification notification=build(this,base,seq,course);
    if(Build.VERSION.SDK_INT>=29)startForeground(NOTIFICATION_ID,notification,ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
@@ -86,10 +86,13 @@ public class StudyAlarmService extends Service {
  private void playSound(){
   try{
    if(player!=null){player.stop();player.release();}
-   player=MediaPlayer.create(this,R.raw.study_alarm);
-   if(player==null)return;
+   player=new MediaPlayer();
    player.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
+   android.content.res.AssetFileDescriptor sound=getResources().openRawResourceFd(R.raw.study_alarm);
+   player.setDataSource(sound.getFileDescriptor(),sound.getStartOffset(),sound.getLength());
+   sound.close();
    player.setLooping(true);
+   player.prepare();
    player.start();
   }catch(Exception ignored){}
  }
