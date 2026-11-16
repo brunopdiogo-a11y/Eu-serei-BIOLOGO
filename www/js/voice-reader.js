@@ -274,7 +274,16 @@ export function initStageSpeech(frame, root) {
   $('voice-next').addEventListener('click',()=>move(1));
   select.addEventListener('change',()=>{preferences.voice=select.value;try{localStorage.setItem('eusereibiologo-speech-v1',JSON.stringify(preferences));}catch{}if(active){stopSpeech(true);setStatus('Voz alterada. Clique para continuar.');}});
   rate.addEventListener('input',()=>{$('voice-rate-value').textContent=Number(rate.value).toFixed(1)+'×';preferences.rate=Number(rate.value);try{localStorage.setItem('eusereibiologo-speech-v1',JSON.stringify(preferences));}catch{}});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){stopSpeech(true);setStatus('Leitura interrompida ao sair da página.');}});
+  // Não cancelamos a narração apenas porque o Chrome ficou em segundo plano.
+  // Isso permite continuidade onde o navegador suportar TTS em segundo plano.
+  // O Android pode suspender a Web Speech API; áudio nativo exige serviço Android.
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden && active && !paused){
+      setStatus('Narração em segundo plano (a continuidade depende do Android/Chrome).');
+    }else if(!document.hidden && active && !paused){
+      setStatus('Narração ativa · parágrafo '+(paragraphIndex()+1)+' de '+paragraphs.length+'.');
+    }
+  });
   window.addEventListener('pagehide',()=>stopSpeech(true));
   if(!synth){start.disabled=true;setStatus('Recurso de leitura não disponível neste navegador.');return;}
   voices();
