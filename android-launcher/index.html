@@ -2,9 +2,9 @@
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f7faf7"><title>Notificações inteligentes · EU SEREI BIOLOGO</title>
 <style>
 :root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#263b2e;background:#f8faf8;color-scheme:light}*{box-sizing:border-box}
-body{margin:0;min-height:100dvh;padding:18px 16px 48px}.panel{max-width:540px;margin:auto}
+html{scroll-padding-top:84px}body{margin:0;min-height:100dvh;min-height:100svh;padding:0 16px calc(48px + env(safe-area-inset-bottom,0px))}.panel{max-width:540px;margin:auto}.safe-header{position:sticky;top:0;z-index:5;display:flex;align-items:center;min-height:64px;padding-top:env(safe-area-inset-top,0px);background:#f8faf8;border-bottom:1px solid #e3ebe4}.safe-header .back{display:inline-flex;align-items:center;min-height:48px;padding:12px 10px;border-radius:10px;margin-left:-10px;touch-action:manipulation}.safe-header .back:focus-visible{outline:2px solid #26754a;outline-offset:2px}.reminder-content{padding-top:14px}@supports not (padding-top:env(safe-area-inset-top)){.safe-header{padding-top:28px}}
 a{color:#27784d;text-decoration:none;font-size:13px;font-weight:700}
-h1{font-size:24px;letter-spacing:-.035em;margin:27px 0 7px}p{font-size:13px;line-height:1.55;color:#6b806e}h2{font-size:16px;margin:0 0 12px}
+h1{font-size:24px;letter-spacing:-.035em;margin:12px 0 7px}p{font-size:13px;line-height:1.55;color:#6b806e}h2{font-size:16px;margin:0 0 12px}
 .card{background:#fff;border:1px solid #e2eae4;border-radius:17px;padding:19px;margin-top:22px}
 button{background:#25764a;color:#fff;border:0;padding:12px 15px;border-radius:10px;font:700 13px system-ui;cursor:pointer}
 button.alt{background:#edf5ee;color:#306847}button.warn{background:#fff1ed;color:#975647}
@@ -16,8 +16,8 @@ button:disabled{opacity:.5}.row{display:flex;gap:10px;align-items:center;flex-wr
 .status{font-size:12px;color:#32774d;line-height:1.55;min-height:20px}.tiny{font-size:11px;color:#829587}.hidden{display:none!important}
 .badge{display:inline-block;padding:5px 8px;border-radius:8px;background:#edf5ef;color:#27754a;font-size:11px;font-weight:700}
 </style></head><body><main class="panel">
-<a href="./index.html#settings">← Voltar às configurações</a>
-<h1>🔔 Notificações inteligentes</h1>
+<header class="safe-header"><a class="back" href="./index.html#settings">← Voltar às configurações</a></header>
+<div class="reminder-content"><h1>🔔 Notificações inteligentes</h1>
 <p>As metas são definidas no Planejamento. Aqui você controla a cobrança e agenda o próximo lembrete do celular.</p>
 <section class="card">
 <div class="row" style="justify-content:space-between"><h2>⚙️ Cobrança inteligente</h2><span class="badge">Android</span></div>
@@ -35,4 +35,4 @@ button:disabled{opacity:.5}.row{display:flex;gap:10px;align-items:center;flex-wr
   <div class="row" style="margin-top:9px"><button class="alt" id="done">✅ Já iniciei o estudo</button><button class="warn" id="cancel">Cancelar</button></div>
 </div>
 <p class="tiny">Os avisos são locais ao celular. O Android pode atrasar alarmes quando houver restrição de bateria ou de horários exatos.</p>
-</section></main><script src="capacitor.js"></script><script src="main.js"></script></body></html>
+</section></div></main><script src="capacitor.js"></script><script src="main.js"></script></body></html>
