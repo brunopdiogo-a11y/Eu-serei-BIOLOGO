@@ -15,7 +15,7 @@ on:
 permissions:
   contents: write
 jobs:
-  android-debug:
+  android-release:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -147,15 +147,35 @@ jobs:
           p.write_text(s)
           print(f'Android: versionCode={number} versionName={version}')
           PY
-      - name: Compilar APK de teste
-        working-directory: android
-        run: bash ./gradlew assembleDebug --no-daemon
-      - name: Nomear APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk EU_SEREI_BIOLOGO.apk
+      - name: Compilar APK com assinatura permanente
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_SIGNING_PASSWORD: ${{ secrets.ANDROID_SIGNING_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$ANDROID_KEYSTORE_B64" ] || [ -z "$ANDROID_SIGNING_PASSWORD" ]; then
+            echo "::error::Configure ANDROID_KEYSTORE_B64 e ANDROID_SIGNING_PASSWORD em Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/eu-serei-biologo-release.p12"
+          printf '%s' "$ANDROID_KEYSTORE_B64" | base64 --decode > "$ANDROID_KEYSTORE_FILE"
+          chmod 600 "$ANDROID_KEYSTORE_FILE"
+          python3 scripts/configure-android-signing.py
+          cd android
+          bash ./gradlew assembleRelease --no-daemon
+      - name: Nomear e verificar APK assinado
+        run: |
+          set -euo pipefail
+          cp android/app/build/outputs/apk/release/app-release.apk EU_SEREI_BIOLOGO.apk
+          test -s EU_SEREI_BIOLOGO.apk
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          test -n "$APKSIGNER"
+          "$APKSIGNER" verify EU_SEREI_BIOLOGO.apk
+          echo "APK release assinado e validado."
       - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
-          name: EU_SEREI_BIOLOGO
+          name: EU_SEREI_BIOLOGO_RELEASE
           path: EU_SEREI_BIOLOGO.apk
           if-no-files-found: error
           retention-days: 30
@@ -164,6 +184,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if ! gh release view android-preview >/dev/null 2>&1; then
-            gh release create android-preview --prerelease --title "EU SEREI BIOLOGO - APK de testes" --notes "APK experimental. A assinatura de testes pode variar entre compilações; talvez seja necessário desinstalar a versão anterior."
+            gh release create android-preview --prerelease --title "EU SEREI BIOLOGO - APK assinado" --notes "Assinatura permanente. Para migrar do APK debug antigo, pode ser necessário desinstalar uma única vez. Mantenha a mesma chave de assinatura em todas as versões."
           fi
           gh release upload android-preview EU_SEREI_BIOLOGO.apk --clobber
