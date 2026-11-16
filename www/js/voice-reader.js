@@ -67,6 +67,7 @@ export function initStageSpeech(frame, root) {
 
   // Plugin de narração comunitário Capacitor 8. Diferente da ponte experimental,
   // sua chamada speak() resolve quando o motor termina de pronunciar uma frase.
+  let pendingSpeechStop=Promise.resolve();
   let communitySpeech=null;
   async function getCommunitySpeech(){
     if(!nativeMode)throw new Error('A voz nativa exige o APK Android.');
@@ -318,7 +319,9 @@ export function initStageSpeech(frame, root) {
     clearTimeout(betweenPhrasesTimer);betweenPhrasesTimer=null;
     try{synth?.cancel();}catch{}
     if(nativeMode&&nativeSpeech)nativeSpeech.stop().catch(()=>{});
-    if(nativeMode&&communitySpeech)communitySpeech.stop().catch(()=>{});
+    if(nativeMode&&communitySpeech){
+      pendingSpeechStop=Promise.resolve(communitySpeech.stop()).catch(err=>console.warn('Falha ao parar voz',err));
+    }
     if(!keepPosition)partIndex=0;
     previousParagraph=-1;
     resetButtons();
@@ -382,12 +385,14 @@ export function initStageSpeech(frame, root) {
       }
       if(active&&!paused){
         token++;paused=true;
-        communitySpeech?.stop().catch(()=>{});
+        if(communitySpeech)pendingSpeechStop=Promise.resolve(communitySpeech.stop()).catch(()=>{});
         resetButtons();setStatus('Leitura pausada. Continuar repetirá a frase atual.');return;
       }
       if(active&&paused){paused=false;}
       try{
         await getCommunitySpeech();
+        // Aguarda o cancelamento da frase anterior para não silenciar o novo trecho.
+        await withTimeout(pendingSpeechStop,3000,'Finalizar frase anterior');
         token++;active=true;paused=false;nativeSession=token;
         resetButtons();
         void speakCommunityQueue(token);
