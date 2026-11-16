@@ -3,7 +3,7 @@ import {prepareScientificSpeech,splitScientificSentences} from '../www/js/speech
 const opts={skipReferences:true,smoothPunctuation:true,expandAcronyms:true};
 assert.equal(prepareScientificSpeech('Fotossíntese (Souza, 2020, p. 1) é essencial.',opts),'Fotossíntese é essencial.');
 assert.equal(prepareScientificSpeech('Em C3, C4 e CAM (mecanismos distintos) há diferenças.',opts),'Em C três, C quatro e C A M (mecanismos distintos) há diferenças.');
-assert.equal(prepareScientificSpeech('Silva; Costa (2018) são autores.',opts),'Silva; Costa (2018) são autores.');
+assert.equal(prepareScientificSpeech('Silva; Costa (2018) são autores.',opts),'Silva; Costa são autores.');
 assert.equal(prepareScientificSpeech('Fotossíntese (Souza, 2020).',{skipReferences:false}),'Fotossíntese (Souza, 2020).');
 assert.deepEqual(splitScientificSentences('C3 e C4 são vias. A luz influencia o processo.'),['C3 e C4 são vias.','A luz influencia o processo.']);
 assert.deepEqual(splitScientificSentences('Segundo autor et al. a luz é importante.'),['Segundo autor et al. a luz é importante.']);
