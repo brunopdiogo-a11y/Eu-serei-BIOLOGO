@@ -10,7 +10,8 @@ export function initStageSpeech(frame, root) {
   const start = $('voice-start'), stopButton = $('voice-stop');
   const select = $('voice-selection'), rate = $('voice-rate');
   const label = $('voice-stage'), paragraphLabel = $('voice-paragraph');
-  let stages = [], stageIndex = -1, parts = [], partIndex = 0;
+  const paragraphSelect=$('voice-paragraph-select'), currentText=$('voice-current-text');
+  let stages = [], stageIndex = -1, parts = [], partIndex = 0, paragraphs = [], previousParagraph = -1;
   let active = false, paused = false, token = 0, utterance = null, betweenPhrasesTimer = null;
   let observer = null, viewObserver = null;
   const preferences = (()=>{try{return JSON.parse(localStorage.getItem('eusereibiologo-speech-v1')||'{}');}catch{return {};}})();
@@ -23,7 +24,64 @@ export function initStageSpeech(frame, root) {
     stopButton.disabled = !active && partIndex===0;
     $('voice-prev').disabled = !parts.length || partIndex===0;
     $('voice-next').disabled = !parts.length || partIndex>=parts.length-1;
-    paragraphLabel.textContent = parts.length ? 'Trecho '+Math.min(parts.length,partIndex+1)+' de '+parts.length : 'Selecione uma etapa';
+    paragraphLabel.textContent = parts.length ? 'Parágrafo '+(parts[Math.min(parts.length-1,partIndex)]?.paragraph+1)+' de '+paragraphs.length : 'Selecione uma etapa';
+    updateParagraphDisplay();
+  }
+  function normalized(text){
+    return String(text||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('pt-BR');
+  }
+  function paragraphIndex(){
+    return parts[Math.min(parts.length-1,partIndex)]?.paragraph??-1;
+  }
+  function updateParagraphDisplay(){
+    const index=paragraphIndex();
+    if(index<0){currentText.textContent='';paragraphSelect.disabled=true;return;}
+    paragraphSelect.disabled=false;
+    if(paragraphSelect.value!==String(index))paragraphSelect.value=String(index);
+    currentText.textContent=paragraphs[index]||'';
+    if(index!==previousParagraph){
+      previousParagraph=index;
+      highlightParagraph(index);
+    }
+  }
+  function highlightParagraph(index){
+    try{
+      const doc=frame.contentDocument;
+      const reader=doc?.getElementById('articleReader');
+      if(!reader)return;
+      const old=reader.querySelectorAll('[data-speech-current-paragraph]');
+      old.forEach(n=>n.removeAttribute('data-speech-current-paragraph'));
+      if(index<0)return;
+      const target=normalized(paragraphs[index]);
+      if(!target)return;
+      // Não modificamos textos nem a estrutura da aula importada.
+      const candidates=[...reader.querySelectorAll('p, li, blockquote')];
+      const found=candidates.find(node=>{
+        const body=normalized(node.textContent);
+        return body===target || (target.length>35&&(body.includes(target.slice(0,65))||target.includes(body.slice(0,65))));
+      });
+      if(!found)return;
+      if(!doc.getElementById('speech-follow-style')){
+        const style=doc.createElement('style');style.id='speech-follow-style';
+        style.textContent='[data-speech-current-paragraph]{background:rgba(55,145,90,.10)!important;outline:2px solid rgba(55,145,90,.32);outline-offset:4px;border-radius:5px;scroll-margin-block:100px}';
+        doc.head.append(style);
+      }
+      found.setAttribute('data-speech-current-paragraph','');
+      // Rolagem automática só acompanha a leitura enquanto está ativa.
+      if(active && !paused)found.scrollIntoView({behavior:'smooth',block:'center'});
+    }catch{}
+  }
+  function populateParagraphs(){
+    paragraphSelect.replaceChildren();
+    for(let i=0;i<paragraphs.length;i++){
+      const option=document.createElement('option');
+      option.value=String(i);
+      option.textContent='Parágrafo '+(i+1)+' — '+paragraphs[i].slice(0,78)+(paragraphs[i].length>78?'…':'');
+      paragraphSelect.append(option);
+    }
+    paragraphSelect.disabled=!paragraphs.length;
+    previousParagraph=-1;
+    updateParagraphDisplay();
   }
   // SpeechSynthesizer on Android may not reliably handle lengthy paragraphs.
   // Frases completas: preservam pontuação original para a prosódia do motor.
@@ -74,6 +132,7 @@ export function initStageSpeech(frame, root) {
     clearTimeout(betweenPhrasesTimer);betweenPhrasesTimer=null;
     try{synth?.cancel();}catch{}
     if(!keepPosition)partIndex=0;
+    previousParagraph=-1;
     resetButtons();
   }
   function updateStage(){
@@ -82,12 +141,14 @@ export function initStageSpeech(frame, root) {
     stopSpeech();
     stageIndex=next;
     const stage=stages[next];
-    if(!stage){parts=[];root.hidden=true;resetButtons();return;}
+    if(!stage){parts=[];paragraphs=[];paragraphSelect.replaceChildren();root.hidden=true;resetButtons();return;}
     root.hidden=false;
-    parts=(stage.paragraphs||[]).flatMap(splitText);
+    paragraphs=(stage.paragraphs||[]).map(p=>String(p||'').replace(/\s+/g,' ').trim()).filter(Boolean);
+    parts=paragraphs.flatMap((p,paragraph)=>splitText(p).map(chunk=>({...chunk,paragraph})));
     partIndex=0;
     label.textContent = 'Aula '+stage.a+' · Etapa '+(next+1)+' · '+stage.title;
-    setStatus('Pronto para ouvir o conteúdo desta etapa.');
+    setStatus('Escolha um parágrafo ou ouça desde o início da etapa.');
+    populateParagraphs();
     resetButtons();
   }
   function speakCurrent(){
@@ -120,7 +181,7 @@ export function initStageSpeech(frame, root) {
       stopSpeech(true);
       setStatus('Reprodução interrompida ('+(e.error||'erro do motor de voz')+'). Toque em Ouvir etapa para tentar novamente.');
     };
-    setStatus('Lendo trecho '+(partIndex+1)+' de '+parts.length+'.');
+    setStatus('Lendo parágrafo '+(paragraphIndex()+1)+' de '+paragraphs.length+'.');
     resetButtons();
     try{synth.speak(utterance);}catch(e){stopSpeech(true);setStatus('Falha ao iniciar a voz: '+e.message);}
   }
@@ -168,6 +229,17 @@ export function initStageSpeech(frame, root) {
       setStatus('Nenhuma voz pt-BR encontrada. Verifique as vozes instaladas nas configurações de síntese de voz do Android.');
     }
   }
+  paragraphSelect.addEventListener('change',()=>{
+    const selected=Number(paragraphSelect.value);
+    const first=parts.findIndex(item=>item.paragraph===selected);
+    if(first<0)return;
+    // A escolha prepara um novo ponto de partida; só reproduz ao tocar ▶.
+    stopSpeech(true);
+    partIndex=first;
+    previousParagraph=-1;
+    resetButtons();
+    setStatus('Parágrafo '+(selected+1)+' selecionado. Toque em Ouvir etapa para começar aqui.');
+  });
   start.addEventListener('click',begin);
   stopButton.addEventListener('click',()=>{stopSpeech();setStatus('Leitura interrompida.');});
   $('voice-prev').addEventListener('click',()=>move(-1));
