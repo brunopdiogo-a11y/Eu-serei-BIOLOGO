@@ -9,7 +9,7 @@ export function initStageSpeech(frame, root) {
   const status = $('voice-status');
   const select = $('voice-selection'), rate = $('voice-rate');
   const headerListen=document.getElementById('voice-toggle');
-  let stages = [], stageIndex = -1, parts = [], partIndex = 0, paragraphs = [], previousParagraph = -1;
+  let stages = [], stageIndex = -1, parts = [], partIndex = 0, paragraphs = [], previousParagraph = -1, selectedParagraph = -1;
   let active = false, paused = false, token = 0, utterance = null, betweenPhrasesTimer = null;
   let observer = null, viewObserver = null;
   const nativeMode=Boolean(window.Capacitor?.isNativePlatform?.() && window.Capacitor?.getPlatform?.()==='android');
@@ -82,6 +82,7 @@ export function initStageSpeech(frame, root) {
     if(first<0)return false;
     stopSpeech(true);
     partIndex=first;
+    selectedParagraph=index;
     previousParagraph=-1;
     resetButtons();
     setStatus('Parágrafo '+(index+1)+' selecionado. Toque em Ouvir para começar daqui.');
@@ -196,7 +197,8 @@ export function initStageSpeech(frame, root) {
     paragraphs=(stage.paragraphs||[]).map(p=>String(p||'').replace(/\s+/g,' ').trim()).filter(Boolean);
     parts=paragraphs.flatMap((p,paragraph)=>splitText(p).map(chunk=>({...chunk,paragraph})));
     partIndex=0;
-    setStatus('Toque no texto para selecionar o parágrafo, depois em 🔊 Ouvir.');
+    selectedParagraph=-1;
+    setStatus('Sem seleção, 🔊 Ouvir começa no primeiro parágrafo. Toque em outro parágrafo para começar nele.');
     resetButtons();
   }
   function speakCurrent(){
@@ -234,6 +236,9 @@ export function initStageSpeech(frame, root) {
     try{synth.speak(utterance);}catch(e){stopSpeech(true);setStatus('Falha ao iniciar a voz: '+e.message);}
   }
   async function begin(){
+    // Regra de início: nenhuma seleção explícita = primeiro parágrafo da etapa.
+    // Pausa/retomada não reinicia a leitura.
+    if(!active && selectedParagraph<0)partIndex=0;
     if(nativeMode){
       updateStage();
       if(!parts.length){setStatus('Abra uma etapa de leitura em Estudos antes de iniciar a narração.');return;}
@@ -310,6 +315,32 @@ export function initStageSpeech(frame, root) {
       setStatus('Nenhuma voz pt-BR encontrada. Verifique as vozes instaladas nas configurações de síntese de voz do Android.');
     }
   }
+  const testButton=$('voice-test');
+  testButton.addEventListener('click',async()=>{
+    testButton.disabled=true;
+    setStatus('Verificando a saída de áudio…');
+    try{
+      if(nativeMode){
+        const player=await getNativeSpeech();
+        await player.testVoice();
+        await new Promise(resolve=>setTimeout(resolve,2000));
+        const info=await player.diagnostic();
+        const volume=Number(info.mediaVolume||0),maximum=Number(info.mediaMaxVolume||0);
+        const hint=volume===0?'Volume de mídia está zerado.':'Volume de mídia: '+volume+'/'+maximum+'.';
+        setStatus('Teste Android: '+(info.detail||info.state||'Aguardando voz')+'. '+hint+(info.state==='speaking'?' Se não ouviu, confira a saída Bluetooth.':''));
+      }else if(synth){
+        const voice=new SpeechSynthesisUtterance('Olá. Este é um teste de voz do Eu Serei Biólogo.');
+        voice.lang='pt-BR';voice.rate=Number(rate.value);
+        const preferred=[...synth.getVoices()].find(v=>String(v.lang||'').replace(/_/g,'-').toLowerCase()==='pt-br');
+        if(preferred)voice.voice=preferred;
+        voice.onstart=()=>setStatus('Teste de voz iniciado. Se não ouvir, confira o volume de mídia.');
+        voice.onerror=e=>setStatus('Teste de voz falhou: '+(e.error||'motor de fala indisponível'));
+        synth.cancel();synth.speak(voice);
+      }else setStatus('Este aparelho não disponibilizou um mecanismo de voz.');
+    }catch(err){
+      setStatus('Falha no teste de voz: '+(err?.message||err));
+    }finally{testButton.disabled=false;}
+  });
   headerListen.addEventListener('click',begin);
   select.addEventListener('change',()=>{preferences.voice=select.value;try{localStorage.setItem('eusereibiologo-speech-v1',JSON.stringify(preferences));}catch{}if(active){stopSpeech(true);setStatus('Voz alterada. Clique para continuar.');}});
   rate.addEventListener('input',()=>{$('voice-rate-value').textContent=Number(rate.value).toFixed(1)+'×';preferences.rate=Number(rate.value);try{localStorage.setItem('eusereibiologo-speech-v1',JSON.stringify(preferences));}catch{}});
