@@ -1,9 +1,13 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 const WEB='./index.html';
-const KEY='eu-serei-biologo-reminders-v1', ENABLED_KEY='eu-serei-biologo-reminders-enabled-v1', INTERVAL=15*60*1000, MAX=4;
+const KEY='eu-serei-biologo-reminders-v1', ENABLED_KEY='eu-serei-biologo-reminders-enabled-v1', ALERT_KEY='eu-serei-biologo-alert-mode-v1', ALARM_CHANNEL='study_alarm_high_v1', INTERVAL=15*60*1000, MAX=4;
 const $=id=>document.getElementById(id);
 const courses={'ecologia-vegetal':'Ecologia Vegetal','sensoriamento':'Sensoriamento Remoto','inventariamento':'Inventariamento de Flora'};
 let current=null, actionBusy=false;
+const alarmEnabled=()=>localStorage.getItem(ALERT_KEY)!=='standard';
+async function initAlarmChannel(){
+ await LocalNotifications.createChannel({id:ALARM_CHANNEL,name:'Alarme de estudo',description:'Cobrança de estudo com sinal e destaque na tela',importance:5,visibility:1,vibration:true,lights:true,lightColor:'#2D8B59',sound:'study_alarm.wav'});
+}
 const store=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'null');}catch{return null;}};
 function save(x){current=x;if(x)localStorage.setItem(KEY,JSON.stringify(x));else localStorage.removeItem(KEY);render();}
 function report(message){$('reminder-status').textContent=message;}
@@ -25,6 +29,7 @@ function futureNotifications(base,course,first,fromSeq){
     title:'🌿 Hora de estudar!',
     body:courses[course]+': vamos começar? Aviso '+seq+' de '+MAX+'.',
     actionTypeId:'study_reminder_actions',
+    ...(alarmEnabled()?{channelId:ALARM_CHANNEL}:{}),
     extra:{series:base,sequence:seq,course},
     schedule:{at:when,allowWhileIdle:true},
     autoCancel:true,
@@ -55,6 +60,7 @@ async function clearDelivered(x=current){
 }
 async function arm(course,when,fromSeq=1,base=uniqueBase()){
  await checkPermission();
+ if(alarmEnabled())await initAlarmChannel();
  const now=new Date();
  const first=quietAdjust(when);
  if(first<=now)throw Error('Selecione uma data e um horário futuros.');
@@ -88,6 +94,25 @@ $('enabled').addEventListener('change',async e=>{
  if(e.target.checked){localStorage.setItem(ENABLED_KEY,'true');report('Cobrança ativada. Programe um horário.');return;}
  localStorage.setItem(ENABLED_KEY,'false');
  try{await cancelScheduled();await clearDelivered();save(null);report('Cobrança desativada.');}catch(err){report('⚠️ '+err.message);}
+});
+$('alert-mode').addEventListener('change',()=>{
+ localStorage.setItem(ALERT_KEY,$('alert-mode').value==='alarm'?'alarm':'standard');
+ report('Modo de alerta salvo. Para aplicar aos lembretes já programados, agende novamente o compromisso.');
+});
+$('test-alarm').addEventListener('click',async()=>{
+ const button=$('test-alarm');button.disabled=true;
+ try{
+  await checkPermission();
+  if(alarmEnabled())await initAlarmChannel();
+  await LocalNotifications.schedule({notifications:[{
+   id:194716,title:'🌿 Teste do alarme de estudo',
+   body:'Se o celular permitir, este aviso aparece com som e vibração.',
+   ...(alarmEnabled()?{channelId:ALARM_CHANNEL}:{}),
+   schedule:{at:new Date(Date.now()+3500)},autoCancel:true
+  }]});
+  report('Teste programado para daqui a alguns segundos. Saia da tela para observar o alerta.');
+ }catch(err){report('⚠️ '+(err?.message||err));}
+ finally{button.disabled=false;}
 });
 $('permission').addEventListener('click',async()=>{
  try{
@@ -135,6 +160,7 @@ async function setup(){
  const pad=x=>String(x).padStart(2,'0');
  $('reminder-time').value=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
  $('enabled').checked=localStorage.getItem(ENABLED_KEY)!=='false';
+ $('alert-mode').value=alarmEnabled()?'alarm':'standard';
  current=store();render();
  try{
   await LocalNotifications.registerActionTypes({types:[{
