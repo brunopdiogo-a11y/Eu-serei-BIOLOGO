@@ -1,4 +1,6 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { registerPlugin } from '@capacitor/core';
+const StudyAlarm=registerPlugin('StudyAlarm');
 const WEB='./index.html';
 const KEY='eu-serei-biologo-reminders-v1', ENABLED_KEY='eu-serei-biologo-reminders-enabled-v1', ALERT_KEY='eu-serei-biologo-alert-mode-v1', ALARM_CHANNEL='study_alarm_high_v1', INTERVAL=15*60*1000, MAX=4;
 const $=id=>document.getElementById(id);
@@ -47,6 +49,7 @@ async function checkPermission(){
  return true;
 }
 async function cancelScheduled(x=current){
+ await StudyAlarm.cancel();
  if(!x)return;
  await LocalNotifications.cancel({notifications:Array.from({length:MAX},(_,i)=>({id:notificationId(x.base,i+1)}))});
 }
@@ -65,7 +68,16 @@ async function arm(course,when,fromSeq=1,base=uniqueBase()){
  const first=quietAdjust(when);
  if(first<=now)throw Error('Selecione uma data e um horário futuros.');
  const entries=futureNotifications(base,course,first,fromSeq);
- const result=await LocalNotifications.schedule({notifications:entries});
+ let result={};
+ if(alarmEnabled()){
+   result=await StudyAlarm.schedule({
+     base,course:courses[course],fromSeq,
+     times:entries.map(n=>n.schedule.at.getTime())
+   });
+ }else{
+   await StudyAlarm.cancel();
+   result=await LocalNotifications.schedule({notifications:entries});
+ }
  const next={base,course,nextAt:entries[0].schedule.at.toISOString(),fromSeq,enabled:true,createdAt:new Date().toISOString()};
  save(next);
  report('✅ '+entries.length+' aviso(s) programados para '+courses[course]+'. Primeiro: '+dt(first)+(result.warning?' — O Android pode atrasar horários sem a permissão de alarmes exatos.':''));
@@ -103,16 +115,21 @@ $('test-alarm').addEventListener('click',async()=>{
  const button=$('test-alarm');button.disabled=true;
  try{
   await checkPermission();
-  if(alarmEnabled())await initAlarmChannel();
-  await LocalNotifications.schedule({notifications:[{
-   id:194716,title:'🌿 Teste do alarme de estudo',
-   body:'Se o celular permitir, este aviso aparece com som e vibração.',
-   ...(alarmEnabled()?{channelId:ALARM_CHANNEL}:{}),
-   schedule:{at:new Date(Date.now()+3500)},autoCancel:true
-  }]});
-  report('Teste programado para daqui a alguns segundos. Saia da tela para observar o alerta.');
+  if(alarmEnabled()){
+    await StudyAlarm.test();
+    report('Teste do alarme nativo iniciado: toque repetido por até 45 segundos. Use Silenciar na tela de alarme.');
+  }else{
+    await LocalNotifications.schedule({notifications:[{
+      id:194716,title:'🌿 Teste de notificação comum',
+      body:'Este é um aviso discreto.',schedule:{at:new Date(Date.now()+3500)},autoCancel:true
+    }]});
+    report('Teste de notificação comum programado para daqui a alguns segundos.');
+  }
  }catch(err){report('⚠️ '+(err?.message||err));}
  finally{button.disabled=false;}
+});
+$('full-screen-permission').addEventListener('click',async()=>{
+ try{await StudyAlarm.openFullScreenSettings();}catch(err){report('⚠️ '+(err?.message||err));}
 });
 $('permission').addEventListener('click',async()=>{
  try{
@@ -162,6 +179,12 @@ async function setup(){
  $('enabled').checked=localStorage.getItem(ENABLED_KEY)!=='false';
  $('alert-mode').value=alarmEnabled()?'alarm':'standard';
  current=store();render();
+ try{
+  const status=await StudyAlarm.status();
+  const line=$('full-screen-status');
+  line.textContent=status.fullScreenAllowed?'✅ Tela cheia permitida pelo Android.':'⚠️ Tela cheia não autorizada. O som e a vibração ainda podem funcionar; toque em Autorizar tela cheia.';
+ }catch(err){$('full-screen-status').textContent='Não foi possível consultar a permissão de tela cheia.';}
+
  try{
   await LocalNotifications.registerActionTypes({types:[{
    id:'study_reminder_actions',
