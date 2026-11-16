@@ -14,12 +14,19 @@ export function initStageSpeech(frame, root) {
   let observer = null, viewObserver = null;
   const nativeMode=Boolean(window.Capacitor?.isNativePlatform?.() && window.Capacitor?.getPlatform?.()==='android');
   let nativeSpeech=null,nativeSpeechPromise=null,nativeOffset=0,nativeSession=0;
+  function withTimeout(promise,ms,phase){
+    let timer;
+    return Promise.race([
+      Promise.resolve(promise),
+      new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(phase+' sem resposta do Android ('+Math.round(ms/1000)+' s).')),ms)})
+    ]).finally(()=>clearTimeout(timer));
+  }
   async function getNativeSpeech(){
     if(!nativeMode)return null;
     if(!nativeSpeechPromise){
       nativeSpeechPromise=import('./native-speech-runtime.js').then(async module=>{
         nativeSpeech=module.StudySpeech;
-        await nativeSpeech.addListener('progress',event=>{
+        nativeSpeech.addListener('progress',event=>{
           if(!active||paused||nativeSession!==token)return;
           const next=nativeOffset+Number(event.index||0);
           if(next>=0&&next<parts.length){
@@ -28,20 +35,20 @@ export function initStageSpeech(frame, root) {
             setStatus('Lendo parágrafo '+(paragraphIndex()+1)+' de '+paragraphs.length+'.');
           }
         });
-        await nativeSpeech.addListener('paused',()=>{
+        nativeSpeech.addListener('paused',()=>{
           if(!active)return;paused=true;resetButtons();
           setStatus('Leitura pausada pelo Android.');
         });
-        await nativeSpeech.addListener('resumed',()=>{
+        nativeSpeech.addListener('resumed',()=>{
           if(!active)return;paused=false;resetButtons();
           setStatus('Leitura retomada pelo Android.');
         });
-        await nativeSpeech.addListener('finished',()=>{
+        nativeSpeech.addListener('finished',()=>{
           if(!active)return;
           stopSpeech();
           setStatus('Leitura concluída.');
         });
-        await nativeSpeech.addListener('error',()=>{
+        nativeSpeech.addListener('error',()=>{
           if(!active)return;
           stopSpeech(true);
           setStatus('A voz Android não conseguiu continuar. Verifique se há voz pt-BR instalada.');
@@ -243,20 +250,20 @@ export function initStageSpeech(frame, root) {
       updateStage();
       if(!parts.length){setStatus('Abra uma etapa de leitura em Estudos antes de iniciar a narração.');return;}
       try{
-        const player=await getNativeSpeech();
+        const player=await withTimeout(getNativeSpeech(),5000,'Carregamento da voz nativa');
         if(active&&!paused){
-          await player.pause();
+          await withTimeout(player.pause(),5000,'Pausar voz');
           paused=true;resetButtons();
           setStatus('Leitura pausada.');return;
         }
         if(active&&paused){
-          await player.resume();
+          await withTimeout(player.resume(),5000,'Retomar voz');
           paused=false;resetButtons();
           setStatus('Narração retomada.');return;
         }
         token++;active=true;paused=false;nativeSession=token;nativeOffset=partIndex;
         resetButtons();
-        await player.speak({chunksJson:JSON.stringify(parts.slice(partIndex).map(p=>p.text)),rate:String(rate.value)});
+        await withTimeout(player.speak({chunksJson:JSON.stringify(parts.slice(partIndex).map(p=>p.text)),rate:String(rate.value)}),5000,'Iniciar narração');
         setStatus('Inicializando a voz Android… Se não ouvir, confira o volume de mídia e a voz pt-BR nas configurações do celular.');
       }catch(err){
         stopSpeech(true);
@@ -322,9 +329,9 @@ export function initStageSpeech(frame, root) {
     try{
       if(nativeMode){
         const player=await getNativeSpeech();
-        await player.testVoice();
-        await new Promise(resolve=>setTimeout(resolve,2000));
-        const info=await player.diagnostic();
+        await withTimeout(player.testVoice(),5000,'Teste da voz');
+        await new Promise(resolve=>setTimeout(resolve,1800));
+        const info=await withTimeout(player.diagnostic(),5000,'Diagnóstico da voz');
         const volume=Number(info.mediaVolume||0),maximum=Number(info.mediaMaxVolume||0);
         const hint=volume===0?'Volume de mídia está zerado.':'Volume de mídia: '+volume+'/'+maximum+'.';
         setStatus('Teste Android: '+(info.detail||info.state||'Aguardando voz')+'. '+hint+(info.state==='speaking'?' Se não ouviu, confira a saída Bluetooth.':''));
