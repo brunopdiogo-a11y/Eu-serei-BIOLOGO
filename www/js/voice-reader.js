@@ -59,6 +59,44 @@ export function initStageSpeech(frame, root) {
     return nativeSpeechPromise;
   }
 
+  // Plugin de narração comunitário Capacitor 8. Diferente da ponte experimental,
+  // sua chamada speak() resolve quando o motor termina de pronunciar uma frase.
+  let communitySpeech=null,communityPromise=null;
+  async function getCommunitySpeech(){
+    if(!communityPromise){
+      communityPromise=withTimeout(import('./native-speech-runtime.js'),7000,'Biblioteca comunitária TTS')
+        .then(module=>{
+          if(!module.CommunitySpeech)throw Error('Plugin comunitário não foi incluído neste APK.');
+          communitySpeech=module.CommunitySpeech;
+          return communitySpeech;
+        }).catch(err=>{communityPromise=null;throw err;});
+    }
+    return communityPromise;
+  }
+  async function speakCommunityQueue(session){
+    try{
+      const engine=await getCommunitySpeech();
+      while(active&&!paused&&session===token&&partIndex<parts.length){
+        const item=parts[partIndex];
+        setStatus('Lendo parágrafo '+(item.paragraph+1)+' de '+paragraphs.length+'.');
+        resetButtons();
+        // Motor comunitário usa a fila nativa e confirma a conclusão da frase.
+        await withTimeout(engine.speak({
+          text:item.text,lang:'pt-BR',rate:Number(rate.value),pitch:1,volume:1,queueStrategy:0
+        }),45000,'Reprodução da frase');
+        if(session!==token||!active||paused)return;
+        partIndex++;
+        resetButtons();
+      }
+      if(session===token&&active&&!paused){
+        stopSpeech();setStatus('Leitura concluída.');
+      }
+    }catch(err){
+      if(session!==token)return;
+      stopSpeech(true);
+      setStatus('Motor de voz comunitário: '+(err?.message||err)+'. Confira a voz pt-BR e o volume de mídia.');
+    }
+  }
   const preferences = (()=>{try{return JSON.parse(localStorage.getItem('eusereibiologo-speech-v1')||'{}');}catch{return {};}})();
   if (preferences.rate >= .7 && preferences.rate <= 1.5) rate.value = String(preferences.rate);
   $('voice-rate-value').textContent = Number(rate.value).toFixed(1)+'×';
@@ -190,6 +228,7 @@ export function initStageSpeech(frame, root) {
     clearTimeout(betweenPhrasesTimer);betweenPhrasesTimer=null;
     try{synth?.cancel();}catch{}
     if(nativeMode&&nativeSpeech)nativeSpeech.stop().catch(()=>{});
+    if(nativeMode&&communitySpeech)communitySpeech.stop().catch(()=>{});
     if(!keepPosition)partIndex=0;
     previousParagraph=-1;
     resetButtons();
@@ -248,26 +287,23 @@ export function initStageSpeech(frame, root) {
     if(!active && selectedParagraph<0)partIndex=0;
     if(nativeMode){
       updateStage();
-      if(!parts.length){setStatus('Abra uma etapa de leitura em Estudos antes de iniciar a narração.');return;}
+      if(!parts.length){
+        setStatus('Abra uma etapa de leitura antes de usar Ouvir.');return;
+      }
+      if(active&&!paused){
+        token++;paused=true;
+        communitySpeech?.stop().catch(()=>{});
+        resetButtons();setStatus('Leitura pausada. Continuar repetirá a frase atual.');return;
+      }
+      if(active&&paused){paused=false;}
       try{
-        const player=await withTimeout(getNativeSpeech(),5000,'Carregamento da voz nativa');
-        if(active&&!paused){
-          await withTimeout(player.pause(),5000,'Pausar voz');
-          paused=true;resetButtons();
-          setStatus('Leitura pausada.');return;
-        }
-        if(active&&paused){
-          await withTimeout(player.resume(),5000,'Retomar voz');
-          paused=false;resetButtons();
-          setStatus('Narração retomada.');return;
-        }
-        token++;active=true;paused=false;nativeSession=token;nativeOffset=partIndex;
+        await getCommunitySpeech();
+        token++;active=true;paused=false;nativeSession=token;
         resetButtons();
-        await withTimeout(player.speak({chunksJson:JSON.stringify(parts.slice(partIndex).map(p=>p.text)),rate:String(rate.value)}),5000,'Iniciar narração');
-        setStatus('Inicializando a voz Android… Se não ouvir, confira o volume de mídia e a voz pt-BR nas configurações do celular.');
+        void speakCommunityQueue(token);
       }catch(err){
         stopSpeech(true);
-        setStatus('Falha ao iniciar a narração nativa: '+(err?.message||err)+'. Verifique a voz em português no Android.');
+        setStatus('Motor comunitário não inicializou: '+(err?.message||err)+'. Confirme que instalou o APK atualizado.');
       }
       return;
     }
@@ -328,13 +364,18 @@ export function initStageSpeech(frame, root) {
     setStatus('Verificando a saída de áudio…');
     try{
       if(nativeMode){
-        const player=await getNativeSpeech();
-        await withTimeout(player.testVoice(),5000,'Teste da voz');
-        await new Promise(resolve=>setTimeout(resolve,1800));
-        const info=await withTimeout(player.diagnostic(),5000,'Diagnóstico da voz');
-        const volume=Number(info.mediaVolume||0),maximum=Number(info.mediaMaxVolume||0);
-        const hint=volume===0?'Volume de mídia está zerado.':'Volume de mídia: '+volume+'/'+maximum+'.';
-        setStatus('Teste Android: '+(info.detail||info.state||'Aguardando voz')+'. '+hint+(info.state==='speaking'?' Se não ouviu, confira a saída Bluetooth.':''));
+        const engine=await getCommunitySpeech();
+        const support=await withTimeout(engine.isLanguageSupported({lang:'pt-BR'}),7000,'Verificar idioma');
+        if(!support.supported){
+          setStatus('O mecanismo de voz não possui português brasileiro. Instale uma voz pt-BR no Android.');
+        }else{
+          setStatus('Português brasileiro disponível. Executando teste de áudio…');
+          await withTimeout(engine.speak({
+            text:'Olá! Esta é a nova voz de teste do Eu Serei Biólogo.',
+            lang:'pt-BR',rate:Number(rate.value),pitch:1,volume:1,queueStrategy:0
+          }),18000,'Teste de áudio');
+          setStatus('O mecanismo concluiu a frase. Se não ouviu som, verifique o volume de mídia e a saída Bluetooth.');
+        }
       }else if(synth){
         const voice=new SpeechSynthesisUtterance('Olá. Este é um teste de voz do Eu Serei Biólogo.');
         voice.lang='pt-BR';voice.rate=Number(rate.value);
