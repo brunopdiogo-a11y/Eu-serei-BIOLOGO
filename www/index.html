@@ -53,8 +53,6 @@
         <label>Dias por semana<select id="plan-days"><option value="2">2 dias</option><option value="3">3 dias</option><option value="4">4 dias</option><option value="5">5 dias</option><option value="6">6 dias</option><option value="7">7 dias</option></select></label>
         <label>Minutos por sessão<input id="plan-minutes" type="number" min="5" max="240" step="5" value="30" required></label>
         <label>Meta de aulas<input id="plan-lessons" type="number" min="1" max="100" value="6" required></label>
-        <label class="full-line check"><input id="plan-remind" type="checkbox"> 🔔 Ativar lembretes desta disciplina</label>
-        <label id="remind-time-wrap" class="full-line">Horário preferido<input id="plan-time" type="time" value="19:00"></label>
         <button type="submit" class="btn primary full-line">Salvar planejamento</button>
       </form>
       <p id="plan-feedback" class="feedback" role="status"></p>
@@ -74,11 +72,7 @@
     </section>
   </div>
   <section class="card"><div class="section-header compact"><div><h2>🗓️ Visão das disciplinas</h2><p class="muted">O ritmo esperado é uma estimativa, não uma cobrança.</p></div></div><div id="plan-list"></div></section>
-  <section class="card"><h2>🔔 Preferências de lembretes</h2>
-    <label class="switch-line"><span><strong>Exibir avisos de planejamento</strong><small>Os três níveis de alerta aparecem no painel inicial.</small></span><input id="inapp-alerts" type="checkbox"></label>
-    <label class="switch-line"><span><strong>Notificações do navegador</strong><small>Dependem de permissão e funcionam nesta versão enquanto a página estiver aberta.</small></span><input id="browser-alerts" type="checkbox"></label>
-    <p id="notice-permission" class="feedback"></p>
-  </section>
+
   <section class="card"><h2>🕘 Sessões recentes</h2><div id="sessions-list"></div></section>
 </section>
 <section class="view" id="view-questions">
@@ -93,6 +87,17 @@
 </section>
 <section class="view" id="view-settings">
   <div class="page-heading"><div class="eyebrow">PREFERÊNCIAS</div><h1>⚙️ Configurações</h1><p>Gerencie seus dados e acompanhe a futura sincronização entre dispositivos.</p></div>
+  <section class="card" id="settings-notifications"><h2>🔔 Notificações inteligentes</h2>
+    <p class="muted">Ajuste as cobranças do aplicativo aqui. O Planejamento continua responsável apenas pelas metas, datas e ritmo de cada disciplina.</p>
+    <label class="switch-line"><span><strong>Avisos de metas e prazos</strong><small>Exibe o panorama do planejamento na tela inicial.</small></span><input id="inapp-alerts" type="checkbox"></label>
+    <label class="switch-line"><span><strong>Avisos do navegador (computador)</strong><small>Dependem da permissão do navegador e da página aberta. São independentes dos lembretes Android.</small></span><input id="browser-alerts" type="checkbox"></label>
+    <div class="plan-row" style="margin-top:12px"><strong>📱 Cobrança inteligente no Android</strong>
+      <p class="muted">Até <strong>4 avisos</strong> por compromisso, repetidos a cada <strong>15 minutos</strong>, sem cobranças entre <strong>22h e 7h</strong>. A disciplina e a data do próximo compromisso são escolhidas no agendamento.</p>
+      <button id="native-reminders-open" class="btn secondary" type="button" hidden>Gerenciar lembretes do celular</button>
+      <small id="native-reminders-note" class="muted">No computador, o gerenciamento de cobranças nativas fica disponível no APK Android.</small>
+    </div>
+    <p id="notice-permission" class="feedback"></p>
+  </section>
   <section class="card"><h2>💾 Backup e restauração</h2><p class="muted">Os dados são salvos neste dispositivo. Exporte um backup antes de limpar o navegador ou trocar de celular.</p>
     <div class="button-row"><button class="btn secondary" id="export">⬇ Exportar backup</button><label class="btn secondary file-label">⬆ Importar backup<input type="file" id="import" accept=".json,application/json" hidden></label></div><p id="backup-status" class="feedback"></p></section>
   <section class="card"><h2>☁️ Sincronização com Google Drive</h2>
