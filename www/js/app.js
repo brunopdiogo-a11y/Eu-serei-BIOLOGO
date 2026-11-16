@@ -86,7 +86,7 @@ function getAlerts(){
  if(!Object.keys(state.plans).length)alerts.push({kind:'neutral',icon:'🌱',title:'Vamos organizar sua primeira matéria?',desc:'Defina as datas de Ecologia Vegetal em Meu Planejamento.'});
  return alerts.sort((a,b)=>({urgent:0,attention:1,neutral:2,good:3}[a.kind]-{urgent:0,attention:1,neutral:2,good:3}[b.kind]));
 }
-function renderHome(){const box=$('home-alerts');box.replaceChildren();if(!state.preferences.inAppAlerts){box.textContent='Os avisos estão desativados nas preferências de planejamento.';return;}
+function renderHome(){const box=$('home-alerts');box.replaceChildren();if(!state.preferences.inAppAlerts){box.textContent='Os avisos estão desativados em Configurações → Notificações inteligentes.';return;}
  getAlerts().slice(0,3).forEach(a=>{const item=document.createElement('article');item.className='notice '+a.kind;const ico=document.createElement('span');ico.className='notice-icon';ico.textContent=a.icon;const info=document.createElement('div');const strong=document.createElement('strong');strong.textContent=a.title;const p=document.createElement('p');p.textContent=a.desc;info.append(strong,p);item.append(ico,info);box.append(item);});}
 function renderCourses(){
  const root=$('course-cards');root.replaceChildren();
@@ -133,16 +133,12 @@ function fillPlan(){
  $('plan-days').value=String(p?.daysPerWeek||4);
  $('plan-minutes').value=p?.minutesPerSession||30;
  $('plan-lessons').value=p?.lessonGoal||course(id).lessons;
- $('plan-remind').checked=!!p?.remind;
- $('plan-time').value=p?.remindTime||'19:00';
- $('remind-time-wrap').classList.toggle('hidden',!$('plan-remind').checked);
 }
 $('plan-course').addEventListener('change',fillPlan);
-$('plan-remind').addEventListener('change',()=>$('remind-time-wrap').classList.toggle('hidden',!$('plan-remind').checked));
 $('plan-form').addEventListener('submit',e=>{
  e.preventDefault();const id=$('plan-course').value,start=$('plan-start').value,end=$('plan-end').value,days=Number($('plan-days').value),minutes=Number($('plan-minutes').value),goal=Number($('plan-lessons').value);
  if(!start||!end||end<start||days<1||days>7||!Number.isInteger(minutes)||minutes<5||minutes>240||!Number.isInteger(goal)||goal<1||goal>course(id).lessons){$('plan-feedback').textContent='Verifique as datas, minutos e meta (até '+course(id).lessons+' aulas).';return;}
- state.plans[id]={start,end,daysPerWeek:days,minutesPerSession:minutes,lessonGoal:goal,remind:$('plan-remind').checked,remindTime:$('plan-time').value||'19:00',updatedAt:new Date().toISOString()};
+ state.plans[id]={start,end,daysPerWeek:days,minutesPerSession:minutes,lessonGoal:goal,updatedAt:new Date().toISOString()};
  save();$('plan-feedback').textContent='✅ Planejamento salvo para '+course(id).title+'.';notify('Planejamento salvo!');
 });
 function currentWeekStart(){const d=now();d.setDate(d.getDate()-((d.getDay()+6)%7));return localDate(d);}
@@ -179,15 +175,9 @@ $('inapp-alerts').addEventListener('change',e=>{state.preferences.inAppAlerts=e.
 $('browser-alerts').addEventListener('change',async e=>{
  if(e.target.checked){if(!('Notification' in window)||!window.isSecureContext){e.target.checked=false;$('notice-permission').textContent='Este navegador não oferece notificações neste contexto.';return;}
  try{const perm=await Notification.requestPermission();if(perm!=='granted'){e.target.checked=false;$('notice-permission').textContent='Permissão não concedida.';return;}}catch{e.target.checked=false;$('notice-permission').textContent='Não foi possível solicitar permissão.';return;}}
- state.preferences.browserAlerts=e.target.checked;save();$('notice-permission').textContent='Preferência salva. Os avisos externos dependem de a página permanecer aberta.';
+ state.preferences.browserAlerts=e.target.checked;save();$('notice-permission').textContent='Preferência salva. Para agendar cobranças persistentes, utilize o APK Android.';
 });
-let notifiedToday={};
-function checkReminders(){
- if(!state.preferences.browserAlerts||!('Notification' in window)||Notification.permission!=='granted')return;
- const d=now(),hhmm=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
- Object.entries(state.plans).forEach(([id,p])=>{const day=today(),key=id+':'+day;if(!p.remind||p.remindTime!==hhmm||notifiedToday[key]||day<p.start||day>p.end)return;notifiedToday[key]=true;new Notification('📚 Hora de estudar!',{body:'Sua sessão de '+course(id).title+' está programada para agora.'});});
-}
-setInterval(checkReminders,30000);
+// As cobranças são globais e não fazem parte dos planos por disciplina.
 $('export').addEventListener('click',()=>{const blob=new Blob([exportState()],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='EU_SEREI_BIOLOGO_backup_'+today()+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),2000);$('backup-status').textContent='Arquivo preparado para download.';});
 $('import').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{const text=await f.text();state=importState(text);render();fillPlan();$('backup-status').textContent='Backup restaurado com sucesso.';}catch(err){$('backup-status').textContent='Erro no backup: '+err.message;}e.target.value='';});
 
