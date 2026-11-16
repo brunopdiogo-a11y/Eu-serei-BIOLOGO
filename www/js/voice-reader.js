@@ -263,10 +263,16 @@ export function initStageSpeech(frame, root) {
     resetButtons();
     try{synth.speak(utterance);}catch(e){stopSpeech(true);setStatus('Falha ao iniciar a voz: '+e.message);}
   }
+  function revealVoicePanel(){
+    if(root.hidden)root.hidden=false;
+    root.classList.add('is-open');
+    document.getElementById('voice-settings-toggle')?.setAttribute('aria-expanded','true');
+  }
   async function begin(){
+    revealVoicePanel();
     if(nativeMode){
       updateStage();
-      if(!parts.length){setStatus('Abra uma etapa de leitura para ouvir o conteúdo.');return;}
+      if(!parts.length){setStatus('Abra uma etapa de leitura em Estudos antes de iniciar a narração.');return;}
       try{
         const player=await getNativeSpeech();
         if(active&&!paused){
@@ -282,16 +288,16 @@ export function initStageSpeech(frame, root) {
         token++;active=true;paused=false;nativeSession=token;nativeOffset=partIndex;
         resetButtons();
         await player.speak({chunksJson:JSON.stringify(parts.slice(partIndex).map(p=>p.text)),rate:String(rate.value)});
-        setStatus('Narração Android em andamento · funciona com a tela apagada.');
+        setStatus('Inicializando a voz Android… Se não ouvir, confira o volume de mídia e a voz pt-BR nas configurações do celular.');
       }catch(err){
         stopSpeech(true);
-        setStatus('Falha ao iniciar a narração nativa: '+(err?.message||err));
+        setStatus('Falha ao iniciar a narração nativa: '+(err?.message||err)+'. Verifique a voz em português no Android.');
       }
       return;
     }
     if(!synth){setStatus('Este navegador não suporta leitura de voz.');return;}
     updateStage();
-    if(!parts.length){setStatus('Abra uma etapa de leitura para ouvir o conteúdo.');return;}
+    if(!parts.length){setStatus('Abra uma etapa de leitura em Estudos antes de iniciar a narração.');return;}
     if(!select.value){setStatus('Nenhuma voz em português do Brasil disponível neste aparelho. Instale ou ative uma voz pt-BR no mecanismo de fala do Android.');return;}
     if(active && !paused){
       // Em certos Androids SpeechSynthesis.pause() não permite retomar.
