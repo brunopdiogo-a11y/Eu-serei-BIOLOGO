@@ -97,6 +97,16 @@
     </div>
     <p id="notice-permission" class="feedback"></p>
   </section>
+  <section class="card" id="app-diagnostics" hidden>
+    <div class="section-header compact"><div><h2>🩺 Saúde do aplicativo</h2><p class="muted">Permissões, bateria e situação dos avisos no Android. As verificações não interrompem os estudos.</p></div></div>
+    <div id="app-health-status" class="notice-list" role="status" aria-live="polite">Toque em Verificar agora para conferir seu celular.</div>
+    <div class="button-row" style="margin-top:14px">
+      <button id="app-health-check" type="button" class="btn secondary">🔍 Verificar agora</button>
+      <button id="app-health-battery" type="button" class="btn ghost">⚙️ Otimização de bateria</button>
+      <button id="app-health-permissions" type="button" class="btn ghost">🔔 Permissões Android</button>
+    </div>
+    <p class="muted" style="font-size:12px;margin-top:12px">O sistema identifica permissões e notificações ainda agendadas ou visíveis. Ele não consegue garantir que um aviso foi lido nem provar que o Android entregou todos os lembretes pontualmente.</p>
+  </section>
   <section class="card"><h2>💾 Backup e restauração</h2><p class="muted">Os dados são salvos neste dispositivo. Exporte um backup antes de limpar o navegador ou trocar de celular.</p>
     <div class="button-row"><button class="btn secondary" id="export">⬇ Exportar backup</button><label class="btn secondary file-label">⬆ Importar backup<input type="file" id="import" accept=".json,application/json" hidden></label></div><p id="backup-status" class="feedback"></p></section>
   <section class="card"><h2>☁️ Sincronização com Google Drive</h2>
