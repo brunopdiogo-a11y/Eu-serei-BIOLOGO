@@ -68,6 +68,10 @@ jobs:
           cp android-native/StudySpeechPlugin.java "$JAVA_DIR/"
           cp android-native/AppHealthPlugin.java "$JAVA_DIR/"
           cp android-native/StudySpeechService.java "$JAVA_DIR/"
+          cp android-native/StudyAlarmPlugin.java "$JAVA_DIR/"
+          cp android-native/StudyAlarmReceiver.java "$JAVA_DIR/"
+          cp android-native/StudyAlarmService.java "$JAVA_DIR/"
+          cp android-native/StudyAlarmActivity.java "$JAVA_DIR/"
           python3 - <<'PY'
           from pathlib import Path
           p=Path('android/app/src/main/java/br/com/eusereibiologo/app/MainActivity.java')
@@ -80,18 +84,30 @@ jobs:
           if 'registerPlugin(AppHealthPlugin.class)' not in s:
               s=s.replace('registerPlugin(StudySpeechPlugin.class);', 'registerPlugin(StudySpeechPlugin.class);\n        registerPlugin(AppHealthPlugin.class);')
               p.write_text(s)
+          if 'registerPlugin(StudyAlarmPlugin.class)' not in s:
+              s=s.replace('registerPlugin(AppHealthPlugin.class);','registerPlugin(AppHealthPlugin.class);\n        registerPlugin(StudyAlarmPlugin.class);')
+              p.write_text(s)
+          assert 'registerPlugin(StudyAlarmPlugin.class)' in p.read_text()
           assert 'registerPlugin(AppHealthPlugin.class)' in p.read_text()
           manifest=Path('android/app/src/main/AndroidManifest.xml')
           m=manifest.read_text()
-          for permission in ['android.permission.FOREGROUND_SERVICE','android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK','android.permission.WAKE_LOCK','android.permission.POST_NOTIFICATIONS']:
+          for permission in ['android.permission.FOREGROUND_SERVICE','android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK','android.permission.WAKE_LOCK','android.permission.POST_NOTIFICATIONS','android.permission.VIBRATE','android.permission.USE_FULL_SCREEN_INTENT']:
               line=f'<uses-permission android:name="{permission}" />'
               if line not in m:
                   m=m.replace('<application',line+'\n    <application',1)
           entry='<service android:name=".StudySpeechService" android:exported="false" android:foregroundServiceType="mediaPlayback" />'
           if entry not in m:m=m.replace('</application>',entry+'\n    </application>')
+          alarm_receiver='<receiver android:name=".StudyAlarmReceiver" android:enabled="true" android:exported="false" />'
+          alarm_service='<service android:name=".StudyAlarmService" android:exported="false" android:foregroundServiceType="mediaPlayback" />'
+          alarm_activity='<activity android:name=".StudyAlarmActivity" android:exported="false" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:showWhenLocked="true" android:turnScreenOn="true" />'
+          for entry in [alarm_receiver,alarm_service,alarm_activity]:
+              if entry not in m:m=m.replace('</application>',entry+'\n    </application>')
           manifest.write_text(m)
           assert 'registerPlugin(StudySpeechPlugin.class)' in p.read_text()
           assert 'StudySpeechService' in m
+          assert 'StudyAlarmReceiver' in m
+          assert 'StudyAlarmService' in m
+          assert 'StudyAlarmActivity' in m
           PY
       - name: Gerar som do alarme de estudo
         run: python3 scripts/generate-reminder-sound.py
