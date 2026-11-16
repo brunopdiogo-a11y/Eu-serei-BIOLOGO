@@ -127,6 +127,26 @@ jobs:
           node --check android-native/speech-bridge.js
           node --check android-native/diagnostic-bridge.js
           node --check www/js/app-diagnostics.js
+      - name: Definir versão Android incremental
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import json
+          import re
+          from pathlib import Path
+          p=Path('android/app/build.gradle')
+          s=p.read_text()
+          number=int(os.environ['BUILD_NUMBER'])+100
+          version=json.loads(Path('package.json').read_text())['version']
+          s,n1=re.subn(r'\bversionCode\s+\d+',f'versionCode {number}',s,count=1)
+          s,n2=re.subn(r'\bversionName\s+["\'][^"\']+["\']',f'versionName "{version}"',s,count=1)
+          if n1!=1 or n2!=1:
+              raise SystemExit('Não foi possível definir versionCode/versionName do Android')
+          p.write_text(s)
+          print(f'Android: versionCode={number} versionName={version}')
+          PY
       - name: Compilar APK de teste
         working-directory: android
         run: bash ./gradlew assembleDebug --no-daemon
