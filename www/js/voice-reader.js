@@ -15,6 +15,38 @@ export function initStageSpeech(frame, root) {
   let stages = [], stageIndex = -1, parts = [], partIndex = 0, paragraphs = [], previousParagraph = -1;
   let active = false, paused = false, token = 0, utterance = null, betweenPhrasesTimer = null;
   let observer = null, viewObserver = null;
+  const nativeMode=Boolean(window.Capacitor?.isNativePlatform?.() && window.Capacitor?.getPlatform?.()==='android');
+  let nativeSpeech=null,nativeSpeechPromise=null,nativeOffset=0,nativeSession=0;
+  async function getNativeSpeech(){
+    if(!nativeMode)return null;
+    if(!nativeSpeechPromise){
+      nativeSpeechPromise=import('./native-speech-runtime.js').then(async module=>{
+        nativeSpeech=module.StudySpeech;
+        await nativeSpeech.addListener('progress',event=>{
+          if(!active||paused||nativeSession!==token)return;
+          const next=nativeOffset+Number(event.index||0);
+          if(next>=0&&next<parts.length){
+            partIndex=next;
+            resetButtons();
+            setStatus('Lendo parágrafo '+(paragraphIndex()+1)+' de '+paragraphs.length+'.');
+          }
+        });
+        await nativeSpeech.addListener('finished',()=>{
+          if(!active)return;
+          stopSpeech();
+          setStatus('Leitura concluída.');
+        });
+        await nativeSpeech.addListener('error',()=>{
+          if(!active)return;
+          stopSpeech(true);
+          setStatus('A voz Android não conseguiu continuar. Verifique se há voz pt-BR instalada.');
+        });
+        return nativeSpeech;
+      }).catch(err=>{nativeSpeechPromise=null;throw err;});
+    }
+    return nativeSpeechPromise;
+  }
+
   const preferences = (()=>{try{return JSON.parse(localStorage.getItem('eusereibiologo-speech-v1')||'{}');}catch{return {};}})();
   if (preferences.rate >= .7 && preferences.rate <= 1.5) rate.value = String(preferences.rate);
   $('voice-rate-value').textContent = Number(rate.value).toFixed(1)+'×';
@@ -168,6 +200,7 @@ export function initStageSpeech(frame, root) {
     token++;active=false;paused=false;utterance=null;
     clearTimeout(betweenPhrasesTimer);betweenPhrasesTimer=null;
     try{synth?.cancel();}catch{}
+    if(nativeMode&&nativeSpeech)nativeSpeech.stop().catch(()=>{});
     if(!keepPosition)partIndex=0;
     previousParagraph=-1;
     resetButtons();
@@ -222,7 +255,32 @@ export function initStageSpeech(frame, root) {
     resetButtons();
     try{synth.speak(utterance);}catch(e){stopSpeech(true);setStatus('Falha ao iniciar a voz: '+e.message);}
   }
-  function begin(){
+  async function begin(){
+    if(nativeMode){
+      updateStage();
+      if(!parts.length){setStatus('Abra uma etapa de leitura para ouvir o conteúdo.');return;}
+      try{
+        const player=await getNativeSpeech();
+        if(active&&!paused){
+          await player.pause();
+          paused=true;resetButtons();
+          setStatus('Leitura pausada.');return;
+        }
+        if(active&&paused){
+          await player.resume();
+          paused=false;resetButtons();
+          setStatus('Narração retomada.');return;
+        }
+        token++;active=true;paused=false;nativeSession=token;nativeOffset=partIndex;
+        resetButtons();
+        await player.speak({chunksJson:JSON.stringify(parts.slice(partIndex).map(p=>p.text)),rate:String(rate.value)});
+        setStatus('Narração Android em andamento · funciona com a tela apagada.');
+      }catch(err){
+        stopSpeech(true);
+        setStatus('Falha ao iniciar a narração nativa: '+(err?.message||err));
+      }
+      return;
+    }
     if(!synth){setStatus('Este navegador não suporta leitura de voz.');return;}
     updateStage();
     if(!parts.length){setStatus('Abra uma etapa de leitura para ouvir o conteúdo.');return;}
@@ -247,9 +305,17 @@ export function initStageSpeech(frame, root) {
   function move(delta){
     if(!parts.length)return;
     partIndex=Math.max(0,Math.min(parts.length-1,partIndex+delta));
-    stopSpeech(true);token++;active=true;paused=false;speakCurrent();
+    stopSpeech(true);if(nativeMode){begin();return;}token++;active=true;paused=false;speakCurrent();
   }
   function voices(){
+    if(nativeMode){
+      select.replaceChildren();
+      const option=document.createElement('option');
+      option.value='native-pt-BR';
+      option.textContent='Português do Brasil · voz Android';
+      select.append(option);select.disabled=true;start.disabled=false;
+      return;
+    }
     if(!synth)return;
     const pool=synth.getVoices().filter(v=>String(v.lang||'').replace(/_/g,'-').toLowerCase()==='pt-br');
     const before=select.value;
@@ -285,9 +351,9 @@ export function initStageSpeech(frame, root) {
     }
   });
   window.addEventListener('pagehide',()=>stopSpeech(true));
-  if(!synth){start.disabled=true;setStatus('Recurso de leitura não disponível neste navegador.');return;}
+  if(!synth&&!nativeMode){start.disabled=true;setStatus('Recurso de leitura não disponível neste navegador.');return;}
   voices();
-  if('onvoiceschanged' in synth)synth.addEventListener('voiceschanged',voices);
+  if(synth&&'onvoiceschanged' in synth)synth.addEventListener('voiceschanged',voices);
   frame.addEventListener('load',()=>{
     try{
       const doc=frame.contentDocument;
