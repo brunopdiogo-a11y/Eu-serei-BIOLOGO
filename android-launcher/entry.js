@@ -116,6 +116,7 @@ async function processAction(action){
  const x=current,extra=action.notification?.extra||{};
  if(!x||extra.series!==x.base)return;
  const seq=Number(extra.sequence||x.fromSeq);
+ localStorage.setItem('eu-serei-biologo-reminder-last-action-v1',JSON.stringify({series:x.base,sequence:seq,action:action.actionId||'opened',at:new Date().toISOString()}));
  if(action.actionId==='study_now'){
   report('A disciplina será aberta. Para encerrar as cobranças, volte ao APK e confirme que iniciou o cronômetro.');
   await openWeb();
