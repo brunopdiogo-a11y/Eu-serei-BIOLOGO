@@ -61,26 +61,39 @@ export function initStageSpeech(frame, root) {
 
   // Plugin de narração comunitário Capacitor 8. Diferente da ponte experimental,
   // sua chamada speak() resolve quando o motor termina de pronunciar uma frase.
-  let communitySpeech=null,communityPromise=null;
+  let communitySpeech=null;
   async function getCommunitySpeech(){
     if(!nativeMode)throw new Error('A voz nativa exige o APK Android.');
-    if(window.Capacitor?.isPluginAvailable && !window.Capacitor.isPluginAvailable('TextToSpeech')){
-      throw new Error('Plugin TextToSpeech não registrado no Android. Instale a versão mais recente do APK.');
+    if(communitySpeech)return communitySpeech;
+    const capacitor=window.Capacitor;
+    if(!capacitor)throw new Error('A ponte do Capacitor não está disponível.');
+
+    // O Android já registra o plugin em capacitor.plugins.json.
+    // Acessar o proxy diretamente evita carregar um segundo runtime
+    // por import() (que estava ficando pendente no WebView Motorola).
+    const direct=capacitor.Plugins?.TextToSpeech;
+    if(direct&&typeof direct.speak==='function'){
+      communitySpeech=direct;
+      return communitySpeech;
     }
-    if(!communityPromise){
-      communityPromise=withTimeout(import('./native-speech-runtime.js'),7000,'Carregar módulo TTS')
-        .then(module=>{
-          if(!module.CommunitySpeech)throw new Error('Módulo de voz comunitária ausente do APK.');
-          communitySpeech=module.CommunitySpeech;
-          return communitySpeech;
-        }).catch(err=>{communityPromise=null;throw err;});
+    if(typeof capacitor.nativePromise==='function' &&
+       capacitor.isPluginAvailable?.('TextToSpeech')){
+      communitySpeech={
+        speak:options=>capacitor.nativePromise('TextToSpeech','speak',options),
+        stop:()=>capacitor.nativePromise('TextToSpeech','stop',{}),
+        getSupportedVoices:()=>capacitor.nativePromise('TextToSpeech','getSupportedVoices',{}),
+        isLanguageSupported:options=>capacitor.nativePromise('TextToSpeech','isLanguageSupported',options)
+      };
+      return communitySpeech;
     }
-    return communityPromise;
+    throw new Error('Ponte nativa TextToSpeech indisponível. Capacitor='+String(Boolean(capacitor))+
+      ', plugin='+String(capacitor.isPluginAvailable?.('TextToSpeech'))+
+      ', nativePromise='+String(typeof capacitor.nativePromise));
   }
   async function speakCommunityQueue(session){
     try{
       setStatus('Conectando ao motor de voz Android…');
-      const engine=await withTimeout(getCommunitySpeech(),7000,'Conectar ao motor comunitário');
+      const engine=await withTimeout(getCommunitySpeech(),3000,'Conectar à ponte Capacitor');
       while(active&&!paused&&session===token&&partIndex<parts.length){
         const item=parts[partIndex];
         setStatus('Lendo parágrafo '+(item.paragraph+1)+' de '+paragraphs.length+'.');
@@ -373,8 +386,8 @@ export function initStageSpeech(frame, root) {
         if(window.Capacitor?.isPluginAvailable && !window.Capacitor.isPluginAvailable('TextToSpeech')){
           throw new Error('O plugin TextToSpeech não está registrado neste APK. Atualize o aplicativo.');
         }
-        setStatus('Etapa 2/3: carregando o módulo de voz…');
-        const engine=await withTimeout(getCommunitySpeech(),7000,'Comunicação com o plugin');
+        setStatus('Etapa 2/3: acessando diretamente a ponte Capacitor…');
+        const engine=await withTimeout(getCommunitySpeech(),3000,'Conexão Capacitor');
         setStatus('Etapa 3/3: enviando uma frase de teste ao Android…');
         // Não bloqueamos o teste aguardando isLanguageSupported: o objetivo é
         // saber primeiro se o próprio mecanismo consegue reproduzir alguma voz.
