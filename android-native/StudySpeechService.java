@@ -95,9 +95,15 @@ public class StudySpeechService extends Service implements TextToSpeech.OnInitLi
             index=0;paused=false;started=!chunks.isEmpty();
             if(!started){updateDiagnostic("error","Nenhuma frase de leitura recebida");stopSelf();return START_NOT_STICKY;}
             updateDiagnostic("starting", "Aguardando mecanismo de voz");
-            showForeground();
-            if(wakeLock!=null&&!wakeLock.isHeld())wakeLock.acquire(2*60*60*1000L);
-            if(ready)speakNext();
+            try {
+                showForeground();
+                if(wakeLock!=null&&!wakeLock.isHeld())wakeLock.acquire(2*60*60*1000L);
+                if(ready)speakNext();
+            } catch(Exception ex){
+                updateDiagnostic("error","Não foi possível ativar o serviço de voz: "+ex.getClass().getSimpleName());
+                StudySpeechPlugin.emit("error",-1);
+                stopReading();
+            }
         }else if(ACTION_PAUSE.equals(action)){
             paused=true;
             StudySpeechPlugin.emit("paused",index);
