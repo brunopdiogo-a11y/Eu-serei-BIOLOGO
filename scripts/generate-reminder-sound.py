@@ -21,7 +21,7 @@ for i in range(int(duration*sample_rate)):
             attack=min(1.,elapsed/.035)
             release=min(1.,(length-elapsed)/.16)
             envelope=max(0.,min(attack,release))**1.1
-            signal+=.24*envelope*(math.sin(2*math.pi*pitches[0]*elapsed)+.5*math.sin(2*math.pi*pitches[1]*elapsed))
+            signal+=.42*envelope*(math.sin(2*math.pi*pitches[0]*elapsed)+.5*math.sin(2*math.pi*pitches[1]*elapsed))
     samples.append(struct.pack("<h",int(max(-1.,min(1.,signal))*32767)))
 with wave.open(str(out),"wb") as f:
     f.setnchannels(1)
