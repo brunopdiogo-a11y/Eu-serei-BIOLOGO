@@ -11,6 +11,7 @@ export function initStageSpeech(frame, root) {
   const select = $('voice-selection'), rate = $('voice-rate');
   const label = $('voice-stage'), paragraphLabel = $('voice-paragraph');
   const paragraphSelect=$('voice-paragraph-select'), currentText=$('voice-current-text');
+  const headerListen=document.getElementById('voice-toggle');
   let stages = [], stageIndex = -1, parts = [], partIndex = 0, paragraphs = [], previousParagraph = -1;
   let active = false, paused = false, token = 0, utterance = null, betweenPhrasesTimer = null;
   let observer = null, viewObserver = null;
@@ -21,6 +22,8 @@ export function initStageSpeech(frame, root) {
   function setStatus(t) { status.textContent=t; }
   function resetButtons(){
     start.textContent = active ? (paused?'▶ Continuar':'⏸ Pausar') : '▶ Ouvir etapa';
+    headerListen.textContent=active?(paused?'▶ Continuar':'⏸ Pausar'):'🔊 Ouvir';
+    headerListen.setAttribute('aria-label',active?(paused?'Continuar a narração':'Pausar a narração'):'Ouvir a partir do parágrafo selecionado');
     stopButton.disabled = !active && partIndex===0;
     $('voice-prev').disabled = !parts.length || partIndex===0;
     $('voice-next').disabled = !parts.length || partIndex>=parts.length-1;
@@ -43,6 +46,40 @@ export function initStageSpeech(frame, root) {
       previousParagraph=index;
       highlightParagraph(index);
     }
+  }
+  // Ao tocar no texto original, escolhemos o parágrafo correspondente.
+  // Nada começa a tocar até o usuário pressionar "Ouvir".
+  function chooseParagraph(index){
+    const first=parts.findIndex(item=>item.paragraph===index);
+    if(first<0)return false;
+    stopSpeech(true);
+    partIndex=first;
+    previousParagraph=-1;
+    resetButtons();
+    setStatus('Parágrafo '+(index+1)+' selecionado. Toque em Ouvir para começar daqui.');
+    return true;
+  }
+  function selectFromArticle(event){
+    if(!parts.length || stageIndex<0)return;
+    const doc=frame.contentDocument;
+    const reader=doc?.getElementById('articleReader');
+    const original=event.target;
+    const el=original?.nodeType===1?original:original?.parentElement;
+    if(!reader||!el||!reader.contains(el))return;
+    if(el.closest('button,a,select,input,textarea,[contenteditable="true"]'))return;
+    const node=el.closest('p,li,blockquote');
+    if(!node||!reader.contains(node))return;
+    const content=normalized(node.textContent);
+    if(content.length<25)return;
+    // A comparação privilegia o começo do parágrafo, ignorando formatação HTML.
+    // Evita selecionar um trecho semelhante, mas pertencente a outra etapa.
+    const index=paragraphs.findIndex(p=>{
+      const saved=normalized(p);
+      const prefix=Math.min(65,content.length,saved.length);
+      return prefix>=25 && (saved.slice(0,prefix)===content.slice(0,prefix));
+    });
+    if(index<0)return;
+    chooseParagraph(index);
   }
   function highlightParagraph(index){
     try{
@@ -229,18 +266,9 @@ export function initStageSpeech(frame, root) {
       setStatus('Nenhuma voz pt-BR encontrada. Verifique as vozes instaladas nas configurações de síntese de voz do Android.');
     }
   }
-  paragraphSelect.addEventListener('change',()=>{
-    const selected=Number(paragraphSelect.value);
-    const first=parts.findIndex(item=>item.paragraph===selected);
-    if(first<0)return;
-    // A escolha prepara um novo ponto de partida; só reproduz ao tocar ▶.
-    stopSpeech(true);
-    partIndex=first;
-    previousParagraph=-1;
-    resetButtons();
-    setStatus('Parágrafo '+(selected+1)+' selecionado. Toque em Ouvir etapa para começar aqui.');
-  });
+  paragraphSelect.addEventListener('change',()=>chooseParagraph(Number(paragraphSelect.value)));
   start.addEventListener('click',begin);
+  headerListen.addEventListener('click',begin);
   stopButton.addEventListener('click',()=>{stopSpeech();setStatus('Leitura interrompida.');});
   $('voice-prev').addEventListener('click',()=>move(-1));
   $('voice-next').addEventListener('click',()=>move(1));
@@ -258,6 +286,7 @@ export function initStageSpeech(frame, root) {
       stages=data.stages||[];
       const view=doc.getElementById('view-study');
       if(!view)throw Error('Seção de leitura indisponível');
+      doc.getElementById('articleReader')?.addEventListener('click',selectFromArticle);
       observer?.disconnect();viewObserver?.disconnect();
       observer=new MutationObserver(updateStage);
       observer.observe(view,{childList:true,subtree:true});
