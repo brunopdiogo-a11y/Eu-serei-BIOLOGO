@@ -13,7 +13,7 @@ on:
       - 'capacitor.config.json'
       - '.github/workflows/build-apk.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
   android-debug:
     runs-on: ubuntu-latest
@@ -121,3 +121,11 @@ jobs:
           path: EU_SEREI_BIOLOGO.apk
           if-no-files-found: error
           retention-days: 30
+      - name: Oferecer APK para download direto
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view android-preview >/dev/null 2>&1; then
+            gh release create android-preview --prerelease --title "EU SEREI BIOLOGO - APK de testes" --notes "APK experimental. A assinatura de testes pode variar entre compilações; talvez seja necessário desinstalar a versão anterior."
+          fi
+          gh release upload android-preview EU_SEREI_BIOLOGO.apk --clobber
