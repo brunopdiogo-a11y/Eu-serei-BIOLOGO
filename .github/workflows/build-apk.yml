@@ -93,6 +93,8 @@ jobs:
           assert 'registerPlugin(StudySpeechPlugin.class)' in p.read_text()
           assert 'StudySpeechService' in m
           PY
+      - name: Gerar som do alarme de estudo
+        run: python3 scripts/generate-reminder-sound.py
       - name: Sincronizar aplicativo
         run: npx cap sync android
       - name: Aplicar ícone oficial Android
