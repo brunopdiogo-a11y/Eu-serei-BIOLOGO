@@ -1,6 +1,5 @@
-import { Browser } from '@capacitor/browser';
 import { LocalNotifications } from '@capacitor/local-notifications';
-const WEB='https://brunopdiogo-a11y.github.io/Eu-serei-BIOLOGO/';
+const WEB='./index.html';
 const KEY='eu-serei-biologo-reminders-v1', ENABLED_KEY='eu-serei-biologo-reminders-enabled-v1', INTERVAL=15*60*1000, MAX=4;
 const $=id=>document.getElementById(id);
 const courses={'ecologia-vegetal':'Ecologia Vegetal','sensoriamento':'Sensoriamento Remoto','inventariamento':'Inventariamento de Flora'};
@@ -81,13 +80,8 @@ function render(){
  }
 }
 async function openWeb(){
- $('open').disabled=true;
- try{await Browser.open({url:WEB,toolbarColor:'#25764a'});}
- catch(err){
-  $('message').textContent='A aba integrada não abriu. Tente pelo Chrome: '+WEB+' ('+(err?.message||'erro')+')';
-  // An ordinary browser anchor remains usable if native Browser plugin fails.
-  if(!$('fallback')){const a=document.createElement('a');a.id='fallback';a.href=WEB;a.target='_blank';a.rel='noopener';a.textContent='Abrir no navegador';$('message').append(document.createElement('br'),a);}
- }finally{$('open').disabled=false;}
+  // Navega no mesmo WebView do aplicativo, sem Chrome Custom Tabs.
+  window.location.href=WEB;
 }
 $('open').addEventListener('click',openWeb);
 const remindersDialog=$('reminders-dialog');
