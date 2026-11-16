@@ -1,3 +1,4 @@
+import {prepareScientificSpeech,splitScientificSentences} from './speech-text.js';
 /* Leitor de voz local: SpeechSynthesis / Web Speech API.
  * Apenas o texto de desenvolvimento das etapas de Ecologia Vegetal.
  * Nunca envia o conteúdo a servidores do EU SEREI BIOLOGO.
@@ -9,6 +10,11 @@ export function initStageSpeech(frame, root) {
   const status = $('voice-status');
   const select = $('voice-selection'), rate = $('voice-rate');
   const headerListen=document.getElementById('voice-toggle');
+  const previousButton=document.getElementById('voice-previous-paragraph');
+  const nextButton=document.getElementById('voice-next-paragraph');
+  const playPauseButton=document.getElementById('voice-play-pause');
+  const playerPosition=document.getElementById('voice-player-position');
+  const playerBar=document.getElementById('voice-player');
   let stages = [], stageIndex = -1, parts = [], partIndex = 0, paragraphs = [], previousParagraph = -1, selectedParagraph = -1;
   let active = false, paused = false, token = 0, utterance = null, betweenPhrasesTimer = null;
   let observer = null, viewObserver = null;
@@ -116,14 +122,104 @@ export function initStageSpeech(frame, root) {
     }
   }
   const preferences = (()=>{try{return JSON.parse(localStorage.getItem('eusereibiologo-speech-v1')||'{}');}catch{return {};}})();
+  const prefSwitches=[
+    ['voice-skip-references','skipReferences',true],
+    ['voice-smooth-punctuation','smoothPunctuation',true],
+    ['voice-expand-acronyms','expandAcronyms',true],
+    ['voice-auto-scroll','autoScroll',true]
+  ];
+  const speechOptions=()=>({
+    skipReferences:preferences.skipReferences!==false,
+    smoothPunctuation:preferences.smoothPunctuation!==false,
+    expandAcronyms:preferences.expandAcronyms!==false
+  });
+  function persistPreferences(){
+    try{localStorage.setItem('eusereibiologo-speech-v1',JSON.stringify(preferences));}catch{}
+  }
+  for(const [id,key,initial] of prefSwitches){
+    const control=$(id);
+    control.checked=preferences[key]===undefined?initial:!!preferences[key];
+    control.addEventListener('change',()=>{
+      preferences[key]=control.checked;persistPreferences();
+      if(key==='autoScroll')return;
+      const current=Math.max(0,paragraphIndex());
+      const shouldResume=active&&!paused;
+      const wasPaused=active&&paused;
+      stopSpeech(true);
+      parts=paragraphs.flatMap((p,paragraph)=>splitText(p).map(segment=>({...segment,paragraph})));
+      partIndex=Math.max(0,parts.findIndex(item=>item.paragraph===current));
+      selectedParagraph=current;
+      resetButtons();
+      if(shouldResume)void begin();
+      else if(wasPaused){active=true;paused=true;resetButtons();}
+      else setStatus('Preferências de leitura científica salvas.');
+    });
+  }
   if (preferences.rate >= .7 && preferences.rate <= 1.5) rate.value = String(preferences.rate);
   $('voice-rate-value').textContent = Number(rate.value).toFixed(1)+'×';
 
   function setStatus(t) { status.textContent=t; }
+  let mediaControls=null,mediaListenerAttached=false,lastMediaSignature='';
+  function mediaBridge(){
+    if(!nativeMode)return null;
+    const capacitor=window.Capacitor;
+    if(!capacitor)return null;
+    if(capacitor.isPluginAvailable&&!capacitor.isPluginAvailable('StudyControls'))return null;
+    if(mediaControls)return mediaControls;
+    if(capacitor.Plugins?.StudyControls){
+      mediaControls=capacitor.Plugins.StudyControls;
+    }else if(typeof capacitor.nativePromise==='function'){
+      mediaControls={
+        show:options=>capacitor.nativePromise('StudyControls','show',options),
+        hide:()=>capacitor.nativePromise('StudyControls','hide',{})
+      };
+    }
+    if(mediaControls&&!mediaListenerAttached){
+      mediaListenerAttached=true;
+      const handle=event=>{
+        const action=event?.action;
+        if(action==='toggle')void begin();
+        else if(action==='next')moveParagraph(1);
+        else if(action==='previous')moveParagraph(-1);
+        else if(action==='stop'){stopSpeech();setStatus('Narração interrompida pelo Android.');}
+      };
+      try{
+        if(typeof capacitor.Plugins?.StudyControls?.addListener==='function'){
+          void capacitor.Plugins.StudyControls.addListener('mediaAction',handle).catch(()=>{});
+        }else if(typeof capacitor.nativeCallback==='function'){
+          capacitor.nativeCallback('StudyControls','addListener',{eventName:'mediaAction'},handle);
+        }
+      }catch(err){console.warn('Controles de mídia indisponíveis',err);}
+    }
+    return mediaControls;
+  }
+  function syncMedia(){
+    if(!nativeMode)return;
+    const bridge=mediaBridge();
+    if(!bridge)return;
+    const current=paragraphIndex();
+    const shouldShow=active&&parts.length>0;
+    const signature=shouldShow?('on/'+paused+'/'+current+'/'+paragraphs.length):'off';
+    if(signature===lastMediaSignature)return;
+    lastMediaSignature=signature;
+    try{
+      const result=shouldShow?
+        bridge.show({title:'Ecologia Vegetal',paused,paragraph:current+1,total:paragraphs.length}):bridge.hide();
+      Promise.resolve(result).catch(err=>console.warn('Painel de áudio não disponível',err));
+    }catch(err){console.warn('Painel de áudio indisponível',err);}
+  }
   function resetButtons(){
     headerListen.textContent=active?(paused?'▶ Continuar':'⏸ Pausar'):'🔊 Ouvir';
     headerListen.setAttribute('aria-label',active?(paused?'Continuar a narração':'Pausar a narração'):'Ouvir a partir do parágrafo selecionado');
+    playerBar.hidden=!parts.length;
+    previousButton.disabled=!parts.length||paragraphIndex()<=0;
+    nextButton.disabled=!parts.length||paragraphIndex()>=paragraphs.length-1;
+    playPauseButton.textContent=active&&!paused?'⏸':'▶';
+    playPauseButton.classList.toggle('primary',active&&!paused);
+    playPauseButton.setAttribute('aria-label',active&&!paused?'Pausar a narração':'Ouvir ou continuar');
+    playerPosition.textContent=parts.length?(Math.max(0,paragraphIndex())+1)+'/'+paragraphs.length:'0/0';
     updateParagraphDisplay();
+    syncMedia();
   }
   function normalized(text){
     return String(text||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('pt-BR');
@@ -194,43 +290,19 @@ export function initStageSpeech(frame, root) {
       }
       found.setAttribute('data-speech-current-paragraph','');
       // Rolagem automática só acompanha a leitura enquanto está ativa.
-      if(active && !paused)found.scrollIntoView({behavior:'smooth',block:'center'});
+      if(active && !paused && preferences.autoScroll!==false)found.scrollIntoView({behavior:'smooth',block:'center'});
     }catch{}
   }
   // SpeechSynthesizer on Android may not reliably handle lengthy paragraphs.
   // Frases completas: preservam pontuação original para a prosódia do motor.
   // Evitamos cortes arbitrários em 190 caracteres, que interrompiam a leitura.
   function splitText(text){
-    const clean=String(text||'').replace(/\s+/g,' ').trim();
-    if(!clean)return [];
-    const output=[];
-    // Fim de frase ou ponto-e-vírgula. Não separa números decimais como "3.5".
-    const phrases=clean.match(/.*?(?:[!?;]+(?:["”’)]*)|(?<!\d)\.(?!\d)(?:["”’)]*)|$)(?=\s|$)/gu)?.filter(x=>x.trim())||[clean];
-    for(const raw of phrases){
-      const phrase=raw.trim();
-      if(phrase.length<=260){output.push({text:phrase,pause:/[.!?]["”’)]*$/.test(phrase)?320:210});continue;}
-      // Frases muito extensas: primeiro separar nas vírgulas, respeitando a oração.
-      let buffer='';
-      const clauses=phrase.split(/(?<=,)\s+/u);
-      for(const clause of clauses){
-        if((buffer+' '+clause).trim().length>260&&buffer){
-          output.push({text:buffer,pause:180});buffer='';
-        }
-        if(clause.length>260){
-          if(buffer){output.push({text:buffer,pause:180});buffer='';}
-          // Último recurso: cortar apenas no espaço entre palavras.
-          let segment='';
-          for(const word of clause.split(/\s+/)){
-            if(segment&&(segment+' '+word).length>260){output.push({text:segment,pause:90});segment='';}
-            segment+=(segment?' ':'')+word;
-          }
-          buffer=segment;
-        }else buffer+=(buffer?' ':'')+clause;
-      }
-      if(buffer)output.push({text:buffer,pause:/[.!?]["”’)]*$/.test(buffer)?320:210});
-    }
-    if(output.length)output[output.length-1].pause=480; // respirar entre parágrafos
-    return output;
+    // Preparação pode levar alguns instantes em etapas longas, mas é feita antes
+    // de enviar o texto ao motor. O conteúdo acadêmico original não é alterado.
+    const spoken=prepareScientificSpeech(text,speechOptions());
+    return splitScientificSentences(spoken).filter(Boolean).map(phrase=>({
+      text:phrase,pause:/[.!?]$/.test(phrase)?180:80
+    }));
   }
   function frameStage(){
     try{
@@ -346,11 +418,23 @@ export function initStageSpeech(frame, root) {
     try{synth.cancel();}catch{}
     speakCurrent();
   }
-  function move(delta){
+  function moveParagraph(delta){
     if(!parts.length)return;
-    partIndex=Math.max(0,Math.min(parts.length-1,partIndex+delta));
-    stopSpeech(true);if(nativeMode){begin();return;}token++;active=true;paused=false;speakCurrent();
+    const current=Math.max(0,paragraphIndex());
+    const target=Math.max(0,Math.min(paragraphs.length-1,current+delta));
+    const first=parts.findIndex(item=>item.paragraph===target);
+    if(first<0)return;
+    const wasPlaying=active&&!paused,wasPaused=active&&paused;
+    stopSpeech(true);
+    partIndex=first;selectedParagraph=target;previousParagraph=-1;
+    resetButtons();
+    setStatus('Parágrafo '+(target+1)+' de '+paragraphs.length+'.');
+    if(wasPlaying)void begin();
+    else if(wasPaused){active=true;paused=true;resetButtons();}
   }
+  previousButton.addEventListener('click',()=>moveParagraph(-1));
+  nextButton.addEventListener('click',()=>moveParagraph(1));
+  playPauseButton.addEventListener('click',()=>void begin());
   function voices(){
     if(nativeMode){
       select.replaceChildren();
