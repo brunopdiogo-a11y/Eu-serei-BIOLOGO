@@ -42,6 +42,7 @@ jobs:
           cp android-launcher/index.html android-web/reminders.html
           npx esbuild android-launcher/entry.js --bundle --format=iife --platform=browser --outfile=android-web/main.js
           npx esbuild android-native/speech-bridge.js --bundle --format=esm --platform=browser --outfile=android-web/js/native-speech-runtime.js
+          npx esbuild android-native/diagnostic-bridge.js --bundle --format=esm --platform=browser --outfile=android-web/js/native-diagnostic-runtime.js
           node -e "const fs=require('fs');const cfg=JSON.parse(fs.readFileSync('capacitor.config.json'));cfg.webDir='android-web';fs.writeFileSync('capacitor.config.json',JSON.stringify(cfg,null,2))"
           test -f android-web/index.html
           test -f android-web/ecologia-privada.html
@@ -65,6 +66,7 @@ jobs:
           JAVA_DIR=android/app/src/main/java/br/com/eusereibiologo/app
           mkdir -p "$JAVA_DIR"
           cp android-native/StudySpeechPlugin.java "$JAVA_DIR/"
+          cp android-native/AppHealthPlugin.java "$JAVA_DIR/"
           cp android-native/StudySpeechService.java "$JAVA_DIR/"
           python3 - <<'PY'
           from pathlib import Path
@@ -75,6 +77,10 @@ jobs:
               if 'registerPlugin(StudySpeechPlugin.class)' not in s:
                   s=s.replace('public class MainActivity extends BridgeActivity {','public class MainActivity extends BridgeActivity {\n    @Override public void onCreate(android.os.Bundle savedInstanceState) {\n        registerPlugin(StudySpeechPlugin.class);\n        super.onCreate(savedInstanceState);\n    }')
               p.write_text(s)
+          if 'registerPlugin(AppHealthPlugin.class)' not in s:
+              s=s.replace('registerPlugin(StudySpeechPlugin.class);', 'registerPlugin(StudySpeechPlugin.class);\n        registerPlugin(AppHealthPlugin.class);')
+              p.write_text(s)
+          assert 'registerPlugin(AppHealthPlugin.class)' in p.read_text()
           manifest=Path('android/app/src/main/AndroidManifest.xml')
           m=manifest.read_text()
           for permission in ['android.permission.FOREGROUND_SERVICE','android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK','android.permission.WAKE_LOCK','android.permission.POST_NOTIFICATIONS']:
@@ -101,6 +107,8 @@ jobs:
           node --check android-launcher/entry.js
           node --check www/js/native-platform.js
           node --check android-native/speech-bridge.js
+          node --check android-native/diagnostic-bridge.js
+          node --check www/js/app-diagnostics.js
       - name: Compilar APK de teste
         working-directory: android
         run: bash ./gradlew assembleDebug --no-daemon
