@@ -7,5 +7,6 @@ export function initNativePlatform(){
   button.hidden=false;
   if(note)note.hidden=true;
   button.addEventListener('click',()=>{window.location.href='./reminders.html';});
+  import('./app-diagnostics.js').then(m=>m.initDiagnostics()).catch(err=>console.warn('Diagnóstico Android indisponível:',err));
 }
 initNativePlatform();
