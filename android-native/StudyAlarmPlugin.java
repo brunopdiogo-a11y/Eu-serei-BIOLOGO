@@ -74,6 +74,15 @@ public class StudyAlarmPlugin extends Plugin {
       JSObject data=new JSObject();data.put("scheduled",count);call.resolve(data);
     }catch(Exception e){call.reject("Falha ao agendar alarme: "+e.getMessage());}
   }
+  @PluginMethod public void test(PluginCall call) {
+    try{
+      Intent intent=new Intent(getContext(),StudyAlarmService.class);
+      intent.setAction(StudyAlarmService.START).putExtra("base",0).putExtra("seq",1);
+      if(Build.VERSION.SDK_INT>=26)getContext().startForegroundService(intent);
+      else getContext().startService(intent);
+      call.resolve();
+    }catch(Exception e){call.reject("Falha ao testar o alarme: "+e.getMessage());}
+  }
   @PluginMethod public void cancel(PluginCall call) {cancel(getContext());call.resolve();}
   @PluginMethod public void status(PluginCall call) {
     var prefs=getContext().getSharedPreferences(PREF,Context.MODE_PRIVATE);
