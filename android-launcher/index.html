@@ -23,6 +23,13 @@ button:disabled{opacity:.5}.row{display:flex;gap:10px;align-items:center;flex-wr
 <div class="row" style="justify-content:space-between"><h2>⚙️ Cobrança inteligente</h2><span class="badge">Android</span></div>
 <label class="check"><input id="enabled" type="checkbox" checked> Ativar cobrança inteligente</label>
 <p class="hint">Configuração fixa: <strong>até 4 avisos</strong>, com intervalo de <strong>15 minutos</strong>. Não incomodar entre <strong>22h e 7h</strong>.</p>
+<label class="field" for="alert-mode">Como receber a cobrança?
+<select id="alert-mode">
+<option value="alarm">🔊 Alarme de estudo · som, vibração e aviso destacado</option>
+<option value="standard">🔔 Notificação comum · discreta</option>
+</select></label>
+<div class="row"><button type="button" class="alt" id="test-alarm">🔉 Testar aviso</button></div>
+<p class="tiny">O modo alarme tenta aparecer em destaque enquanto você usa o celular. A exibição depende do Android, do volume, do modo Não Perturbe e da configuração do canal de notificações.</p>
 <label class="field" for="reminder-course">Disciplina do compromisso
 <select id="reminder-course"><option value="ecologia-vegetal">🌿 Ecologia Vegetal</option><option value="sensoriamento">🛰️ Sensoriamento Remoto</option><option value="inventariamento">🌳 Inventariamento de Flora</option></select></label>
 <label class="field" for="reminder-time">Quando lembrar?
