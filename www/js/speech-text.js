@@ -10,6 +10,8 @@ export function prepareScientificSpeech(value, options={}){
     // Só remove citações autor-data: não remove explicações, siglas ou nomes científicos.
     // Ex.: (Souza, 2020, p. 1), (Gurevich; Scheider; Gordonet, 2009, p. 36).
     text=text.replace(/\s*\((?=[^()]{3,180}\b(?:18|19|20)\d{2}\b)(?=[^()]*[A-Za-zÀ-ÿ])[^()]*\)/gu,'');
+    // Autor (2020) também é uma citação, não uma explicação científica.
+    text=text.replace(/([A-ZÀ-Ý][\p{L}-]+(?:\s+et al\.)?)\s*\(((?:18|19|20)\d{2}[a-z]?)\)/gu,'$1');
   }
   if(settings.expandAcronyms){
     text=text.replace(/\bC3\b/gu,'C três').replace(/\bC4\b/gu,'C quatro');
