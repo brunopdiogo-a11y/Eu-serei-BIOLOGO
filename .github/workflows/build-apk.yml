@@ -102,6 +102,10 @@ jobs:
           alarm_activity='<activity android:name=".StudyAlarmActivity" android:exported="false" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:showWhenLocked="true" android:turnScreenOn="true" />'
           for entry in [alarm_receiver,alarm_service,alarm_activity]:
               if entry not in m:m=m.replace('</application>',entry+'\n    </application>')
+          # Android 11+: o mecanismo de TTS precisa ser visível à aplicação.
+          queries='<queries><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent></queries>'
+          if 'android.intent.action.TTS_SERVICE' not in m:
+              m=m.replace('<application',queries+'\n    <application',1)
           manifest.write_text(m)
           assert 'registerPlugin(StudySpeechPlugin.class)' in p.read_text()
           assert 'StudySpeechService' in m
