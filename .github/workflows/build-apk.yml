@@ -33,6 +33,8 @@ jobs:
       - name: Validar módulos JavaScript Web
         run: |
           node --check www/js/voice-reader.js
+          node --check www/js/speech-text.js
+          node scripts/test-speech-text.mjs
           node --check www/js/app.js
           node --check www/js/private-library.js
       - name: Preparar aplicativo Android integrado
