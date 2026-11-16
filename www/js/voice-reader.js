@@ -63,10 +63,14 @@ export function initStageSpeech(frame, root) {
   // sua chamada speak() resolve quando o motor termina de pronunciar uma frase.
   let communitySpeech=null,communityPromise=null;
   async function getCommunitySpeech(){
+    if(!nativeMode)throw new Error('A voz nativa exige o APK Android.');
+    if(window.Capacitor?.isPluginAvailable && !window.Capacitor.isPluginAvailable('TextToSpeech')){
+      throw new Error('Plugin TextToSpeech não registrado no Android. Instale a versão mais recente do APK.');
+    }
     if(!communityPromise){
-      communityPromise=withTimeout(import('./native-speech-runtime.js'),7000,'Biblioteca comunitária TTS')
+      communityPromise=withTimeout(import('./native-speech-runtime.js'),7000,'Carregar módulo TTS')
         .then(module=>{
-          if(!module.CommunitySpeech)throw Error('Plugin comunitário não foi incluído neste APK.');
+          if(!module.CommunitySpeech)throw new Error('Módulo de voz comunitária ausente do APK.');
           communitySpeech=module.CommunitySpeech;
           return communitySpeech;
         }).catch(err=>{communityPromise=null;throw err;});
@@ -75,7 +79,8 @@ export function initStageSpeech(frame, root) {
   }
   async function speakCommunityQueue(session){
     try{
-      const engine=await getCommunitySpeech();
+      setStatus('Conectando ao motor de voz Android…');
+      const engine=await withTimeout(getCommunitySpeech(),7000,'Conectar ao motor comunitário');
       while(active&&!paused&&session===token&&partIndex<parts.length){
         const item=parts[partIndex];
         setStatus('Lendo parágrafo '+(item.paragraph+1)+' de '+paragraphs.length+'.');
@@ -364,18 +369,20 @@ export function initStageSpeech(frame, root) {
     setStatus('Verificando a saída de áudio…');
     try{
       if(nativeMode){
-        const engine=await getCommunitySpeech();
-        const support=await withTimeout(engine.isLanguageSupported({lang:'pt-BR'}),7000,'Verificar idioma');
-        if(!support.supported){
-          setStatus('O mecanismo de voz não possui português brasileiro. Instale uma voz pt-BR no Android.');
-        }else{
-          setStatus('Português brasileiro disponível. Executando teste de áudio…');
-          await withTimeout(engine.speak({
-            text:'Olá! Esta é a nova voz de teste do Eu Serei Biólogo.',
-            lang:'pt-BR',rate:Number(rate.value),pitch:1,volume:1,queueStrategy:0
-          }),18000,'Teste de áudio');
-          setStatus('O mecanismo concluiu a frase. Se não ouviu som, verifique o volume de mídia e a saída Bluetooth.');
+        setStatus('Etapa 1/3: verificando se o Android reconhece o plugin de voz…');
+        if(window.Capacitor?.isPluginAvailable && !window.Capacitor.isPluginAvailable('TextToSpeech')){
+          throw new Error('O plugin TextToSpeech não está registrado neste APK. Atualize o aplicativo.');
         }
+        setStatus('Etapa 2/3: carregando o módulo de voz…');
+        const engine=await withTimeout(getCommunitySpeech(),7000,'Comunicação com o plugin');
+        setStatus('Etapa 3/3: enviando uma frase de teste ao Android…');
+        // Não bloqueamos o teste aguardando isLanguageSupported: o objetivo é
+        // saber primeiro se o próprio mecanismo consegue reproduzir alguma voz.
+        await withTimeout(engine.speak({
+          text:'Olá. Teste de voz do Eu Serei Biólogo.',
+          lang:'pt-BR',rate:0.9,pitch:1,volume:1,queueStrategy:0
+        }),12000,'Reprodução da voz');
+        setStatus('O motor terminou a frase de teste. Se não ouviu som, verifique volume de mídia, Bluetooth e voz pt-BR do Android.');
       }else if(synth){
         const voice=new SpeechSynthesisUtterance('Olá. Este é um teste de voz do Eu Serei Biólogo.');
         voice.lang='pt-BR';voice.rate=Number(rate.value);
