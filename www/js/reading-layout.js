@@ -4,16 +4,16 @@
  */
 export function initReadingLayout(frame){
  const $=id=>document.getElementById(id);
- const voice=$('voice-panel'), voiceToggle=$('voice-toggle'), voiceClose=$('voice-close');
+ const voice=$('voice-panel'), voiceSettings=$('voice-settings-toggle'), voiceClose=$('voice-close');
  const chapters=$('reading-chapters'), clock=$('clock');
  let focus=false,manualNavigation=false,lastStage='',observer=null;
  const currentDoc=()=>{try{return frame.contentDocument}catch{return null}};
  function setVoice(open){
    if(voice.hidden)open=false;
    voice.classList.toggle('is-open',open);
-   voiceToggle.setAttribute('aria-expanded',String(open));
+   voiceSettings.setAttribute('aria-expanded',String(open));
  }
- voiceToggle.addEventListener('click',()=>setVoice(!voice.classList.contains('is-open')));
+ voiceSettings.addEventListener('click',()=>setVoice(!voice.classList.contains('is-open')));
  voiceClose.addEventListener('click',()=>setVoice(false));
  document.addEventListener('keydown',e=>{if(e.key==='Escape')setVoice(false)});
  // Aulas no modo de leitura só mostram o conteúdo; "Estudos" volta à navegação.
@@ -108,6 +108,6 @@ export function initReadingLayout(frame){
  });
  // Painéis externos podem encobrir a leitura apenas quando solicitados.
  document.addEventListener('pointerdown',e=>{
-   if(voice.classList.contains('is-open') && !voice.contains(e.target) && !voiceToggle.contains(e.target))setVoice(false);
+   if(voice.classList.contains('is-open') && !voice.contains(e.target) && !voiceSettings.contains(e.target))setVoice(false);
  },{passive:true});
 }
