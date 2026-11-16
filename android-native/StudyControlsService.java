@@ -15,6 +15,7 @@ import android.os.Build;
 import android.os.IBinder;
 
 public class StudyControlsService extends Service {
+    public static volatile boolean running=false;
     public static final String SHOW="br.com.eusereibiologo.media.SHOW";
     private static final String COMMAND="br.com.eusereibiologo.media.COMMAND.";
     private static final String CHANNEL="study_narration_controls_v1";
@@ -26,6 +27,7 @@ public class StudyControlsService extends Service {
 
     @Override public void onCreate(){
         super.onCreate();
+        running=true;
         NotificationManager nm=(NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
         if(Build.VERSION.SDK_INT>=26){
             NotificationChannel channel=new NotificationChannel(CHANNEL,"Controles da narração",NotificationManager.IMPORTANCE_LOW);
@@ -112,6 +114,7 @@ public class StudyControlsService extends Service {
         return START_NOT_STICKY;
     }
     @Override public void onDestroy(){
+        running=false;
         if(media!=null){media.setActive(false);media.release();media=null;}
         if(Build.VERSION.SDK_INT>=24)stopForeground(STOP_FOREGROUND_REMOVE);
         else stopForeground(true);
