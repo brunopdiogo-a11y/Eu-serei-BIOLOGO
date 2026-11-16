@@ -17,8 +17,8 @@ export async function initDiagnostics(){
  async function refresh(){
   check.disabled=true;output.textContent='Verificando o Android…';
   try{
-   const {AppHealth,Notifications}=await api();
-   const settled=await Promise.allSettled([AppHealth.inspect(),Notifications.checkPermissions(),Notifications.checkExactNotificationSetting(),Notifications.getPending(),Notifications.getDeliveredNotifications()]);
+   const {AppHealth,Notifications,StudyAlarm}=await api();
+   const settled=await Promise.allSettled([AppHealth.inspect(),Notifications.checkPermissions(),Notifications.checkExactNotificationSetting(),Notifications.getPending(),Notifications.getDeliveredNotifications(),StudyAlarm.status()]);
    const get=i=>settled[i].status==='fulfilled'?settled[i].value:null;
    const sys=get(0),p=get(1),exact=get(2),pending=get(3),delivered=get(4),rows=[];
    if(sys){
@@ -32,9 +32,19 @@ export async function initDiagnostics(){
     const allowed=exact.exact_alarm==='granted';
     rows.push(statusRow(allowed?'✅':'⚠️',allowed?'Alarmes exatos permitidos':'Alarmes exatos não permitidos',allowed?'O aplicativo tem autorização para horários exatos.':'O Android pode atrasar avisos; confira a permissão de alarmes.',allowed?'good':'attention'));
    }
+   const nativeAlarm=get(5);
+   if(nativeAlarm){
+    const full=nativeAlarm.fullScreenAllowed;
+    rows.push(statusRow(full?'✅':'⚠️',full?'Alertas em tela cheia permitidos':'Alerta em tela cheia não autorizado',
+      full?'O Android permite solicitar a abertura da tela de alarme.':'Com o celular desbloqueado, o alarme ainda poderá tocar e mostrar um aviso destacado.',full?'good':'attention'));
+   }
    const task=parse('eu-serei-biologo-reminders-v1');
    const action=parse('eu-serei-biologo-reminder-last-action-v1');
    if(task){
+    if(nativeAlarm&&nativeAlarm.base===task.base){
+      rows.push(statusRow('⏰','Alarme nativo configurado','O agendamento foi registrado pelo Android. O som e a tela de alarme dependem das permissões do aparelho.','good'));
+      if(nativeAlarm.lastAction)rows.push(statusRow('ℹ️','Última ação do alarme',nativeAlarm.lastAction+' · aviso '+nativeAlarm.lastActionSeq));
+    }else{
     const belongs=n=>Number(n?.extra?.series)===Number(task.base);
     const future=pending?.notifications?.filter(belongs)||[];
     const visible=delivered?.notifications?.filter(belongs)||[];
@@ -44,6 +54,7 @@ export async function initDiagnostics(){
     else if(pending&&delivered)rows.push(statusRow('⚠️','Nenhum aviso pendente ou visível','Há um compromisso salvo, mas não foram encontrados avisos correspondentes. Revise o agendamento.','attention'));
     else rows.push(statusRow('ℹ️','Compromisso salvo','Não foi possível consultar o agendamento no sistema.'));
     if(!action||action.series!==task.base)rows.push(statusRow('ℹ️','Sem resposta registrada','Ainda não há uma ação registrada neste compromisso. Isso não comprova que você ignorou o aviso.'));
+    }
    }else rows.push(statusRow('ℹ️','Nenhum compromisso ativo','Agende um lembrete em Notificações inteligentes.'));
    output.replaceChildren(...rows);
   }catch(err){output.replaceChildren(statusRow('⚠️','Não foi possível verificar',String(err?.message||err),'attention'))}
