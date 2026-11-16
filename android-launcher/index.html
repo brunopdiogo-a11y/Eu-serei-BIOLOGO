@@ -28,8 +28,9 @@ button:disabled{opacity:.5}.row{display:flex;gap:10px;align-items:center;flex-wr
 <option value="alarm">🔊 Alarme de estudo · som, vibração e aviso destacado</option>
 <option value="standard">🔔 Notificação comum · discreta</option>
 </select></label>
-<div class="row"><button type="button" class="alt" id="test-alarm">🔉 Testar aviso</button></div>
-<p class="tiny">O modo alarme tenta aparecer em destaque enquanto você usa o celular. A exibição depende do Android, do volume, do modo Não Perturbe e da configuração do canal de notificações.</p>
+<div class="row"><button type="button" class="alt" id="test-alarm">🔊 Testar alarme</button><button type="button" class="alt" id="full-screen-permission">Permitir tela cheia</button></div>
+<p class="status" id="full-screen-status" role="status">Verificando autorização de tela cheia...</p>
+<p class="tiny">O modo alarme toca repetidamente por até 45 segundos e pode abrir uma tela de estudo quando o Android permitir. Com a tela desbloqueada, o sistema pode mostrar apenas um aviso destacado.</p>
 <label class="field" for="reminder-course">Disciplina do compromisso
 <select id="reminder-course"><option value="ecologia-vegetal">🌿 Ecologia Vegetal</option><option value="sensoriamento">🛰️ Sensoriamento Remoto</option><option value="inventariamento">🌳 Inventariamento de Flora</option></select></label>
 <label class="field" for="reminder-time">Quando lembrar?
