@@ -92,12 +92,14 @@ public class StudySpeechService extends Service implements TextToSpeech.OnInitLi
             if(ready)speakNext();
         }else if(ACTION_PAUSE.equals(action)){
             paused=true;
+            StudySpeechPlugin.emit("paused",index);
             if(tts!=null)tts.stop();
             if(wakeLock!=null&&wakeLock.isHeld())wakeLock.release();
             if(started)showForeground();
         }else if(ACTION_RESUME.equals(action)){
             if(started){
                 paused=false;
+                StudySpeechPlugin.emit("resumed",index);
                 if(wakeLock!=null&&!wakeLock.isHeld())wakeLock.acquire(2*60*60*1000L);
                 showForeground();
                 if(ready)speakNext();
