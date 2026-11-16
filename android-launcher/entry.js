@@ -181,6 +181,12 @@ async function setup(){
  current=store();render();
  try{
   const status=await StudyAlarm.status();
+  if(current&&alarmEnabled()&&status.base===-1){
+    save(null);
+    report('O compromisso anterior foi encerrado no Android. Agende o próximo quando desejar.');
+  }else if(current&&status.base===current.base&&status.lastAction==='snoozed'){
+    report('⏰ O alarme foi adiado pelo Android. O próximo aviso seguirá o horário do adiamento.');
+  }
   const line=$('full-screen-status');
   line.textContent=status.fullScreenAllowed?'✅ Tela cheia permitida pelo Android.':'⚠️ Tela cheia não autorizada. O som e a vibração ainda podem funcionar; toque em Autorizar tela cheia.';
  }catch(err){$('full-screen-status').textContent='Não foi possível consultar a permissão de tela cheia.';}
