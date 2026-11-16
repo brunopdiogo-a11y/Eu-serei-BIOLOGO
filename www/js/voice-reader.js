@@ -7,10 +7,7 @@ export function initStageSpeech(frame, root) {
   const synth = window.speechSynthesis;
   const $ = id => root.querySelector('#'+id);
   const status = $('voice-status');
-  const start = $('voice-start'), stopButton = $('voice-stop');
   const select = $('voice-selection'), rate = $('voice-rate');
-  const label = $('voice-stage'), paragraphLabel = $('voice-paragraph');
-  const paragraphSelect=$('voice-paragraph-select'), currentText=$('voice-current-text');
   const headerListen=document.getElementById('voice-toggle');
   let stages = [], stageIndex = -1, parts = [], partIndex = 0, paragraphs = [], previousParagraph = -1;
   let active = false, paused = false, token = 0, utterance = null, betweenPhrasesTimer = null;
@@ -61,13 +58,8 @@ export function initStageSpeech(frame, root) {
 
   function setStatus(t) { status.textContent=t; }
   function resetButtons(){
-    start.textContent = active ? (paused?'▶ Continuar':'⏸ Pausar') : '▶ Ouvir etapa';
     headerListen.textContent=active?(paused?'▶ Continuar':'⏸ Pausar'):'🔊 Ouvir';
     headerListen.setAttribute('aria-label',active?(paused?'Continuar a narração':'Pausar a narração'):'Ouvir a partir do parágrafo selecionado');
-    stopButton.disabled = !active && partIndex===0;
-    $('voice-prev').disabled = !parts.length || partIndex===0;
-    $('voice-next').disabled = !parts.length || partIndex>=parts.length-1;
-    paragraphLabel.textContent = parts.length ? 'Parágrafo '+(parts[Math.min(parts.length-1,partIndex)]?.paragraph+1)+' de '+paragraphs.length : 'Selecione uma etapa';
     updateParagraphDisplay();
   }
   function normalized(text){
@@ -78,10 +70,6 @@ export function initStageSpeech(frame, root) {
   }
   function updateParagraphDisplay(){
     const index=paragraphIndex();
-    if(index<0){currentText.textContent='';paragraphSelect.disabled=true;return;}
-    paragraphSelect.disabled=false;
-    if(paragraphSelect.value!==String(index))paragraphSelect.value=String(index);
-    currentText.textContent=paragraphs[index]||'';
     if(index!==previousParagraph){
       previousParagraph=index;
       highlightParagraph(index);
@@ -100,23 +88,20 @@ export function initStageSpeech(frame, root) {
     return true;
   }
   function selectFromArticle(event){
-    if(!parts.length || stageIndex<0)return;
+    if(!parts.length||stageIndex<0)return;
     const doc=frame.contentDocument;
     const reader=doc?.getElementById('articleReader');
     const original=event.target;
     const el=original?.nodeType===1?original:original?.parentElement;
     if(!reader||!el||!reader.contains(el))return;
     if(el.closest('button,a,select,input,textarea,[contenteditable="true"]'))return;
-    const node=el.closest('p,li,blockquote');
+    const node=el.closest('.studybody p');
     if(!node||!reader.contains(node))return;
     const content=normalized(node.textContent);
-    if(content.length<25)return;
-    // A comparação privilegia o começo do parágrafo, ignorando formatação HTML.
-    // Evita selecionar um trecho semelhante, mas pertencente a outra etapa.
+    if(content.length<15)return;
     const index=paragraphs.findIndex(p=>{
       const saved=normalized(p);
-      const prefix=Math.min(65,content.length,saved.length);
-      return prefix>=25 && (saved.slice(0,prefix)===content.slice(0,prefix));
+      return saved===content || (Math.min(content.length,saved.length)>=30 && saved.slice(0,Math.min(100,content.length,saved.length))===content.slice(0,Math.min(100,content.length,saved.length)));
     });
     if(index<0)return;
     chooseParagraph(index);
@@ -147,18 +132,6 @@ export function initStageSpeech(frame, root) {
       // Rolagem automática só acompanha a leitura enquanto está ativa.
       if(active && !paused)found.scrollIntoView({behavior:'smooth',block:'center'});
     }catch{}
-  }
-  function populateParagraphs(){
-    paragraphSelect.replaceChildren();
-    for(let i=0;i<paragraphs.length;i++){
-      const option=document.createElement('option');
-      option.value=String(i);
-      option.textContent='Parágrafo '+(i+1)+' — '+paragraphs[i].slice(0,78)+(paragraphs[i].length>78?'…':'');
-      paragraphSelect.append(option);
-    }
-    paragraphSelect.disabled=!paragraphs.length;
-    previousParagraph=-1;
-    updateParagraphDisplay();
   }
   // SpeechSynthesizer on Android may not reliably handle lengthy paragraphs.
   // Frases completas: preservam pontuação original para a prosódia do motor.
@@ -219,14 +192,11 @@ export function initStageSpeech(frame, root) {
     stopSpeech();
     stageIndex=next;
     const stage=stages[next];
-    if(!stage){parts=[];paragraphs=[];paragraphSelect.replaceChildren();root.hidden=true;resetButtons();return;}
-    root.hidden=false;
+    if(!stage){parts=[];paragraphs=[];resetButtons();setStatus('Abra uma etapa em Estudos para iniciar a leitura.');return;}
     paragraphs=(stage.paragraphs||[]).map(p=>String(p||'').replace(/\s+/g,' ').trim()).filter(Boolean);
     parts=paragraphs.flatMap((p,paragraph)=>splitText(p).map(chunk=>({...chunk,paragraph})));
     partIndex=0;
-    label.textContent = 'Aula '+stage.a+' · Etapa '+(next+1)+' · '+stage.title;
-    setStatus('Escolha um parágrafo ou ouça desde o início da etapa.');
-    populateParagraphs();
+    setStatus('Toque no texto para selecionar o parágrafo, depois em 🔊 Ouvir.');
     resetButtons();
   }
   function speakCurrent(){
@@ -263,13 +233,7 @@ export function initStageSpeech(frame, root) {
     resetButtons();
     try{synth.speak(utterance);}catch(e){stopSpeech(true);setStatus('Falha ao iniciar a voz: '+e.message);}
   }
-  function revealVoicePanel(){
-    if(root.hidden)root.hidden=false;
-    root.classList.add('is-open');
-    document.getElementById('voice-settings-toggle')?.setAttribute('aria-expanded','true');
-  }
   async function begin(){
-    revealVoicePanel();
     if(nativeMode){
       updateStage();
       if(!parts.length){setStatus('Abra uma etapa de leitura em Estudos antes de iniciar a narração.');return;}
@@ -327,7 +291,7 @@ export function initStageSpeech(frame, root) {
       const option=document.createElement('option');
       option.value='native-pt-BR';
       option.textContent='Português do Brasil · voz Android';
-      select.append(option);select.disabled=true;start.disabled=false;
+      select.append(option);select.disabled=true;
       return;
     }
     if(!synth)return;
@@ -340,18 +304,13 @@ export function initStageSpeech(frame, root) {
       select.append(option);
     }
     const preferred=pool.find(v=>v.voiceURI===before)||pool.find(v=>v.voiceURI===preferences.voice)||pool[0];
-    if(preferred){select.value=preferred.voiceURI;select.disabled=false;start.disabled=false;}
+    if(preferred){select.value=preferred.voiceURI;select.disabled=false;}
     else{
-      select.disabled=true;start.disabled=true;
+      select.disabled=true;
       setStatus('Nenhuma voz pt-BR encontrada. Verifique as vozes instaladas nas configurações de síntese de voz do Android.');
     }
   }
-  paragraphSelect.addEventListener('change',()=>chooseParagraph(Number(paragraphSelect.value)));
-  start.addEventListener('click',begin);
   headerListen.addEventListener('click',begin);
-  stopButton.addEventListener('click',()=>{stopSpeech();setStatus('Leitura interrompida.');});
-  $('voice-prev').addEventListener('click',()=>move(-1));
-  $('voice-next').addEventListener('click',()=>move(1));
   select.addEventListener('change',()=>{preferences.voice=select.value;try{localStorage.setItem('eusereibiologo-speech-v1',JSON.stringify(preferences));}catch{}if(active){stopSpeech(true);setStatus('Voz alterada. Clique para continuar.');}});
   rate.addEventListener('input',()=>{$('voice-rate-value').textContent=Number(rate.value).toFixed(1)+'×';preferences.rate=Number(rate.value);try{localStorage.setItem('eusereibiologo-speech-v1',JSON.stringify(preferences));}catch{}});
   // Não cancelamos a narração apenas porque o Chrome ficou em segundo plano.
@@ -365,7 +324,8 @@ export function initStageSpeech(frame, root) {
     }
   });
   window.addEventListener('pagehide',()=>stopSpeech(true));
-  if(!synth&&!nativeMode){start.disabled=true;setStatus('Recurso de leitura não disponível neste navegador.');return;}
+  if(!synth&&!nativeMode){headerListen.disabled=true;setStatus('Recurso de leitura não disponível neste navegador.');return;}
+  root.hidden=false;
   voices();
   if(synth&&'onvoiceschanged' in synth)synth.addEventListener('voiceschanged',voices);
   frame.addEventListener('load',()=>{
@@ -382,7 +342,7 @@ export function initStageSpeech(frame, root) {
       viewObserver=new MutationObserver(updateStage);
       viewObserver.observe(view,{attributes:true,attributeFilter:['class']});
       updateStage();
-    }catch(e){root.hidden=true;setStatus('Não foi possível preparar a leitura: '+e.message);}
+    }catch(e){setStatus('Não foi possível preparar a leitura: '+e.message);}
   });
   resetButtons();
 }
