@@ -35,7 +35,6 @@ public class StudyAlarmActivity extends Activity {
   super.onCreate(state);
   if(Build.VERSION.SDK_INT>=27){setShowWhenLocked(true);setTurnScreenOn(true);}
   else getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED|WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
-  getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
   base=getIntent().getIntExtra("base",-1);
   seq=getIntent().getIntExtra("seq",0);
   var prefs=getSharedPreferences(StudyAlarmPlugin.PREF,MODE_PRIVATE);
