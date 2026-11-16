@@ -56,8 +56,9 @@ public class StudyAlarmService extends Service {
    .setCategory(Notification.CATEGORY_ALARM)
    .setVisibility(Notification.VISIBILITY_PUBLIC)
    .setAutoCancel(false)
-   .setOngoing(true)
-   .setFullScreenIntent(full,true);
+   .setOngoing(true);
+  NotificationManager manager=(NotificationManager)c.getSystemService(Context.NOTIFICATION_SERVICE);
+  if(Build.VERSION.SDK_INT<34||manager.canUseFullScreenIntent())n.setFullScreenIntent(full,true);
   return n.build();
  }
  static void postFallback(Context c,int base,int seq,String course){
