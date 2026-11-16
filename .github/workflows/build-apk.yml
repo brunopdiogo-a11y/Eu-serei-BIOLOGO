@@ -34,10 +34,16 @@ jobs:
           node --check www/js/voice-reader.js
           node --check www/js/app.js
           node --check www/js/private-library.js
-      - name: Preparar acesso Web seguro no Android
+      - name: Preparar aplicativo Android integrado
         run: |
-          npx esbuild android-launcher/entry.js --bundle --format=iife --platform=browser --outfile=android-launcher/main.js
-          node -e "const fs=require('fs');const cfg=JSON.parse(fs.readFileSync('capacitor.config.json'));cfg.webDir='android-launcher';fs.writeFileSync('capacitor.config.json',JSON.stringify(cfg,null,2))"
+          mkdir -p android-web
+          cp -a www/. android-web/
+          cp android-launcher/index.html android-web/reminders.html
+          npx esbuild android-launcher/entry.js --bundle --format=iife --platform=browser --outfile=android-web/main.js
+          node -e "const fs=require('fs');const cfg=JSON.parse(fs.readFileSync('capacitor.config.json'));cfg.webDir='android-web';fs.writeFileSync('capacitor.config.json',JSON.stringify(cfg,null,2))"
+          test -f android-web/index.html
+          test -f android-web/ecologia-privada.html
+          test -f android-web/reminders.html
       - name: Criar projeto Android
         run: npx cap add android
       - name: Autorizar uso de alarmes Android
@@ -55,14 +61,15 @@ jobs:
         run: npx cap sync android
       - name: Aplicar ícone oficial Android
         run: node scripts/generate-android-icons.mjs
-      - name: Confirmar registro nativo do Browser
+      - name: Confirmar integração nativa
         run: |
           test -f android/app/src/main/assets/capacitor.plugins.json
           cat android/app/src/main/assets/capacitor.plugins.json
-          grep -q 'BrowserPlugin' android/app/src/main/assets/capacitor.plugins.json
           grep -q 'LocalNotificationsPlugin' android/app/src/main/assets/capacitor.plugins.json
-      - name: Validar lembretes JavaScript
-        run: node --check android-launcher/entry.js
+      - name: Validar lembretes e ponte Android
+        run: |
+          node --check android-launcher/entry.js
+          node --check www/js/native-platform.js
       - name: Compilar APK de teste
         working-directory: android
         run: bash ./gradlew assembleDebug --no-daemon
