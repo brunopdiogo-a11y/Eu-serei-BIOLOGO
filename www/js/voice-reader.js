@@ -161,6 +161,7 @@ export function initStageSpeech(frame, root) {
 
   function setStatus(t) { status.textContent=t; }
   let mediaControls=null,mediaListenerAttached=false,lastMediaSignature='';
+  let preserveMediaOnJump=false;
   function mediaBridge(){
     if(!nativeMode)return null;
     const capacitor=window.Capacitor;
@@ -195,7 +196,7 @@ export function initStageSpeech(frame, root) {
     return mediaControls;
   }
   function syncMedia(){
-    if(!nativeMode)return;
+    if(!nativeMode||preserveMediaOnJump)return;
     const bridge=mediaBridge();
     if(!bridge)return;
     const current=paragraphIndex();
@@ -314,7 +315,8 @@ export function initStageSpeech(frame, root) {
       return m?Number(m[1])-1:-1;
     }catch{return -1;}
   }
-  function stopSpeech(keepPosition=false){
+  function stopSpeech(keepPosition=false,keepNotification=false){
+    preserveMediaOnJump=keepNotification;
     token++;active=false;paused=false;utterance=null;
     clearTimeout(betweenPhrasesTimer);betweenPhrasesTimer=null;
     try{synth?.cancel();}catch{}
@@ -325,6 +327,7 @@ export function initStageSpeech(frame, root) {
     if(!keepPosition)partIndex=0;
     previousParagraph=-1;
     resetButtons();
+    preserveMediaOnJump=false;
   }
   function updateStage(){
     const next=frameStage();
@@ -430,7 +433,7 @@ export function initStageSpeech(frame, root) {
     const first=parts.findIndex(item=>item.paragraph===target);
     if(first<0)return;
     const wasPlaying=active&&!paused,wasPaused=active&&paused;
-    stopSpeech(true);
+    stopSpeech(true,true);
     partIndex=first;selectedParagraph=target;previousParagraph=-1;
     resetButtons();
     setStatus('Parágrafo '+(target+1)+' de '+paragraphs.length+'.');
