@@ -33,10 +33,18 @@ jobs:
           test -f www/index.html
           test -f www/styles.css
           test -f www/js/app.js
+      - name: Preparar arquivos com versão anti-cache
+        run: python3 scripts/prepare-web-release.py
+      - name: Validar arquivos preparados
+        run: |
+          test -f _site/index.html
+          test -f _site/ecologia-privada.html
+          grep -q 'js/app.js?v=' _site/index.html
+          grep -q 'voice-reader.js?v=' _site/ecologia-privada.html
       - name: Empacotar site estático
         uses: actions/upload-pages-artifact@v4
         with:
-          path: www
+          path: _site
       - name: Publicar site
         id: deployment
         uses: actions/deploy-pages@v4
