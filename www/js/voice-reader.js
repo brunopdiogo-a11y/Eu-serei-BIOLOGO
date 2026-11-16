@@ -31,6 +31,14 @@ export function initStageSpeech(frame, root) {
             setStatus('Lendo parágrafo '+(paragraphIndex()+1)+' de '+paragraphs.length+'.');
           }
         });
+        await nativeSpeech.addListener('paused',()=>{
+          if(!active)return;paused=true;resetButtons();
+          setStatus('Leitura pausada pelo Android.');
+        });
+        await nativeSpeech.addListener('resumed',()=>{
+          if(!active)return;paused=false;resetButtons();
+          setStatus('Leitura retomada pelo Android.');
+        });
         await nativeSpeech.addListener('finished',()=>{
           if(!active)return;
           stopSpeech();
