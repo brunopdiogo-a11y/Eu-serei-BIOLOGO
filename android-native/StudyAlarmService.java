@@ -46,6 +46,8 @@ public class StudyAlarmService extends Service {
   open.putExtra("base",base).putExtra("seq",seq);
   open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
   PendingIntent full=PendingIntent.getActivity(c,base%100000000+seq,open,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+  Intent silence=new Intent(c,StudyAlarmService.class).setAction(STOP);
+  PendingIntent silenceAction=PendingIntent.getService(c,9901,silence,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
   Notification.Builder n=Build.VERSION.SDK_INT>=26?
    new Notification.Builder(c,CHANNEL):new Notification.Builder(c);
   n.setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
@@ -58,6 +60,7 @@ public class StudyAlarmService extends Service {
    .setAutoCancel(false)
    .setOngoing(true);
   NotificationManager manager=(NotificationManager)c.getSystemService(Context.NOTIFICATION_SERVICE);
+  n.addAction(android.R.drawable.ic_media_pause,"Silenciar",silenceAction);
   if(Build.VERSION.SDK_INT<34||manager.canUseFullScreenIntent())n.setFullScreenIntent(full,true);
   return n.build();
  }
