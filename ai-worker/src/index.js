@@ -170,7 +170,9 @@ export default {
     const stage=safeText(data.stage,180);
     if(!question&&!excerpt)return respond({error:"Selecione um trecho ou escreva uma pergunta"},400,origin);
     const history=validHistory(data.history);
+    const imageRequested=/imagem|imagens|ilustra|figura|foto|micrografia|mostr[ea]/i.test(question);
     const text=[
+      imageRequested?"O aplicativo tem uma galeria de imagens reais e fará a busca separadamente. Não responda que não pode mostrar imagens nem invente uma imagem. Explique o assunto e sugira qual estrutura procurar.":"", 
       "Disciplina: Ecologia Vegetal",
       stage?"Etapa: "+stage:"",
       excerpt?"Trecho fornecido pelo estudante:\n"+excerpt:"",
