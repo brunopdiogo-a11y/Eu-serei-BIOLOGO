@@ -35,11 +35,11 @@
     <div id="study-ai-config" class="study-ai-config" hidden>
       <label for="study-ai-endpoint">Endereço HTTPS do serviço (Cloudflare Worker)</label>
       <input id="study-ai-endpoint" type="url" inputmode="url" autocomplete="url" placeholder="https://seu-tutor.seu-usuario.workers.dev">
-      <label for="study-ai-token">Código privado de acesso ao tutor (não é a chave OpenAI)</label>
+      <label for="study-ai-token">Código privado de acesso ao tutor</label>
       <input id="study-ai-token" type="password" autocomplete="off" placeholder="Código de acesso com pelo menos 24 caracteres">
       <button id="study-ai-connect" type="button">Testar conexão e salvar</button>
       <small id="study-ai-connection-status" role="status">Configure o Worker e os Secrets antes de utilizar a IA.</small>
-      <small>A chave da OpenAI permanece exclusivamente no serviço seguro. O código de acesso vale apenas nesta sessão do aplicativo.</small>
+      <small>O tutor usa Cloudflare Workers AI. Não é necessária uma chave da OpenAI. O código de acesso vale apenas nesta sessão do aplicativo.</small>
     </div>
     <label for="study-question-quote">Trecho do material selecionado (opcional)</label>
     <textarea id="study-question-quote" rows="3" placeholder="Selecione um trecho da aula ou cole-o aqui."></textarea>
