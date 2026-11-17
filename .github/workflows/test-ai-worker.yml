@@ -1,0 +1,24 @@
+name: Testar Tutor Cloudflare Workers AI
+on:
+  push:
+    paths:
+      - 'ai-worker/**'
+      - '.github/workflows/deploy-ai-worker.yml'
+      - '.github/workflows/test-ai-worker.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validar JavaScript
+        run: node --check ai-worker/src/index.js
+      - name: Testar autorização e respostas simuladas do Workers AI
+        run: node --test ai-worker/test/worker.test.mjs
