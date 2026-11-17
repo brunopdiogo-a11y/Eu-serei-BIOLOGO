@@ -77,7 +77,9 @@ export function initStudyQuestions(frame){
      }catch{}
    }
    renderThread();
+   // Mostrar ajustes somente no primeiro uso, antes da configuração.
    showConfig(!endpointInput.value||!tokenInput.value);
+   configToggle.textContent=endpointInput.value&&tokenInput.value?'⚙ Configuração da IA · conectada':'⚙ Configurar conexão com a IA';
    updateStatus(endpointInput.value&&tokenInput.value?'Pronto para perguntar.':'Configure o endereço da API e o código de acesso antes de perguntar.');
    question.focus();
  }
@@ -125,6 +127,13 @@ export function initStudyQuestions(frame){
      connectionStatus.textContent=data.configured?
        '✅ Serviço ativo e configurado. Faça uma pergunta para validar o código de acesso.':
        '⚠️ Worker acessível, mas ainda faltam os Secrets no Cloudflare.';
+     if(data.configured){
+       // Depois de conectar, liberar toda a área para leitura e conversa.
+       showConfig(false);
+       configToggle.textContent='⚙ Configuração da IA · conectada';
+       updateStatus('✅ Conexão configurada. Faça sua pergunta abaixo.');
+       question.focus();
+     }
    }catch(e){connectionStatus.textContent='⚠️ '+e.message}
    finally{connect.disabled=false;}
  });
