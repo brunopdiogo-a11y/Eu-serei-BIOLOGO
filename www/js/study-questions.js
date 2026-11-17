@@ -121,7 +121,11 @@ export function initStudyQuestions(frame){
     try{cfg=saveConnection()}catch(e){showConfig(true);notice(e.message,true);return}
     msg.imageLoading=true;renderMessages();
     try{
-      const query=msg.imageQuery||'stomatal crypt Nerium oleander';
+      const index=messages.indexOf(msg);
+      const preceding=[...messages.slice(0,Math.max(0,index))].reverse().find(m=>m.role==='user');
+      const fallback=preceding?.content||'folhas ecologia vegetal';
+      const query=msg.imageQuery||(/criptas? estom[aá]tic|est[oô]mat/i.test(msg.content+' '+fallback)
+        ?'stomatal crypt Nerium oleander':fallback.slice(0,180));
       const res=await fetchWithTimeout(cfg.endpoint+'/images',{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.token},
@@ -290,7 +294,7 @@ export function initStudyQuestions(frame){
       if(!res.ok)throw Error(body.error||'Não foi possível consultar o tutor.');
       if(typeof body.answer!=='string'||!body.answer.trim())throw Error('Resposta vazia da IA.');
       const imageIntent=/imagem|imagens|ilustra|figura|foto|micrografia|mostr[ea]/i.test(next.text);
-      const imageTopic=/criptas?\s+estom[aá]tic|est[oô]mato/i.test(next.text+' '+body.answer)
+      const imageTopic=/criptas?\s+estom[aá]tic|est[oô]mato/i.test(next.text+' '+next.excerpt)
         ?'stomatal crypt Nerium oleander':next.text.slice(0,160);
       const answerMessage={role:'assistant',content:body.answer.trim(),imageQuery:imageTopic};
       messages.push(answerMessage);
