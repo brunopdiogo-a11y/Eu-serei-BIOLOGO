@@ -1,6 +1,6 @@
 /**
  * EU SEREI BIOLOGO · tutor de estudos (Cloudflare Worker)
- * Secrets: OPENAI_API_KEY, STUDY_ACCESS_TOKEN
+ * Secret: STUDY_ACCESS_TOKEN. Binding Cloudflare Workers AI: env.AI
  * Não envia segredos nem dados privados ao repositório ou ao aplicativo.
  */
 const ORIGINS = new Set([
@@ -55,15 +55,15 @@ export default {
     const origin=request.headers.get("Origin")||"";
     const pathname=new URL(request.url).pathname;
     if(pathname==="/health"&&request.method==="GET"){
-      return respond({ok:true,service:"eusereibiologo-tutor",configured:!!(env.OPENAI_API_KEY&&env.STUDY_ACCESS_TOKEN)},200,origin);
+      return respond({ok:true,service:"eusereibiologo-tutor",configured:!!(env.AI?.run&&env.STUDY_ACCESS_TOKEN?.length>=24)},200,origin);
     }
     if(request.method==="OPTIONS"){
       return ORIGINS.has(origin)?new Response(null,{status:204,headers:cors(origin)}):respond({error:"Origem não permitida"},403,origin);
     }
     if(pathname!=="/chat"||request.method!=="POST")return respond({error:"Rota não encontrada"},404,origin);
     if(origin&&!ORIGINS.has(origin))return respond({error:"Origem não autorizada"},403,origin);
-    if(!env.OPENAI_API_KEY||!env.STUDY_ACCESS_TOKEN||env.STUDY_ACCESS_TOKEN.length<24){
-      return respond({error:"Servidor ainda não configurado. Adicione os dois Secrets."},503,origin);
+    if(!env.AI?.run||!env.STUDY_ACCESS_TOKEN||env.STUDY_ACCESS_TOKEN.length<24){
+      return respond({error:"Servidor ainda não configurado. Verifique o binding AI e o Secret STUDY_ACCESS_TOKEN."},503,origin);
     }
     if(!equalSecrets(request.headers.get("Authorization")||"","Bearer "+env.STUDY_ACCESS_TOKEN)){
       return respond({error:"Código de acesso inválido. Confira a configuração da IA."},401,origin);
@@ -88,33 +88,30 @@ export default {
       excerpt?"Trecho fornecido pelo estudante:\n"+excerpt:"",
       "Pergunta do estudante: "+(question||"Explique o trecho selecionado de maneira clara e científica.")
     ].filter(Boolean).join("\n\n");
-    const controller=new AbortController();
-    const timeout=setTimeout(()=>controller.abort(),25000);
     try{
-      const result=await fetch("https://api.openai.com/v1/responses",{
-        method:"POST",signal:controller.signal,
-        headers:{"Authorization":"Bearer "+env.OPENAI_API_KEY,"Content-Type":"application/json"},
-        body:JSON.stringify({
-          model:env.OPENAI_MODEL||"gpt-4.1-mini",
-          instructions:SYSTEM,
-          input:[...history,{role:"user",content:text}],
-          max_output_tokens:800,
-          store:false
-        })
-      });
-      const payload=await result.json();
-      if(!result.ok){
-        const code=payload?.error?.code||"";
-        const message=result.status===429?"Limite de uso da API atingido.":result.status===401?
-          "Chave de API da OpenAI inválida.":"Falha no serviço de IA. Revise saldo, modelo ou configuração.";
-        return respond({error:message,code:String(code).slice(0,60)},result.status>=500?502:400,origin);
-      }
-      const answer=(payload.output||[]).flatMap(item=>(item.content||[])
-        .filter(p=>p.type==="output_text"&&typeof p.text==="string").map(p=>p.text)).join("\n").trim();
-      if(!answer)return respond({error:"O modelo não devolveu texto. Tente novamente."},502,origin);
-      return respond({answer:answer.slice(0,10000),model:payload.model||"modelo configurado"},200,origin);
+      // O modelo é executado na infraestrutura Cloudflare e consome a
+      // franquia gratuita de Workers AI conforme os limites da conta.
+      const result=await env.AI.run(
+        env.AI_MODEL||"@cf/meta/llama-3.1-8b-instruct-fp8-fast",
+        {messages:[
+          {role:"system",content:SYSTEM},
+          ...history,
+          {role:"user",content:text}
+        ],max_tokens:700,temperature:0.35,stream:false}
+      );
+      const answer=typeof result==="string"?result:
+        typeof result?.response==="string"?result.response:
+        typeof result?.result?.response==="string"?result.result.response:"";
+      if(!answer.trim())return respond({error:"A IA não devolveu texto. Tente novamente."},502,origin);
+      return respond({answer:answer.slice(0,10000),model:env.AI_MODEL||"@cf/meta/llama-3.1-8b-instruct-fp8-fast"},200,origin);
     }catch(e){
-      return respond({error:e?.name==="AbortError"?"A resposta demorou demais. Tente novamente.":"Não foi possível consultar a IA."},504,origin);
-    }finally{clearTimeout(timeout);}
+      // A cota diária gratuita pode ser atingida, sem gerar cobrança se a
+      // conta permanecer no plano gratuito.
+      const hint=String(e?.message||"").toLowerCase();
+      const limited=/quota|limit|neuron|exceed|rate|429/.test(hint);
+      return respond({error:limited?
+        "A franquia gratuita do Cloudflare Workers AI pode ter sido atingida. Tente mais tarde.":
+        "Não foi possível consultar o Workers AI. Verifique modelo, binding ou disponibilidade."},limited?429:502,origin);
+    }
   }
 };
