@@ -80,6 +80,61 @@ export function initStudyQuestions(frame){
     quoted.hidden=!selectedExcerpt;
     quotedText.textContent=selectedExcerpt;
   }
+  function appendFormattedText(parent,text){
+    // Renderização controlada de **negrito**, sem interpretar HTML vindo da IA.
+    const pieces=String(text||'').split(/(\\*\\*[^*\\n]{1,120}\\*\\*)/g);
+    for(const part of pieces){
+      if(part.startsWith('**')&&part.endsWith('**')&&part.length>4){
+        const strong=document.createElement('strong');
+        strong.textContent=part.slice(2,-2);
+        parent.append(strong);
+      }else parent.append(document.createTextNode(part));
+    }
+  }
+  function renderImages(bubble,msg){
+    if(!Array.isArray(msg.images)||!msg.images.length)return;
+    const wrap=document.createElement('div');
+    wrap.className='study-ai-image-gallery';
+    for(const item of msg.images){
+      try{
+        const imageUrl=new URL(item.thumbnail),sourceUrl=new URL(item.source);
+        if(imageUrl.protocol!=='https:'||imageUrl.hostname!=='upload.wikimedia.org'||
+           sourceUrl.protocol!=='https:'||sourceUrl.hostname!=='commons.wikimedia.org')continue;
+        const a=document.createElement('a');
+        a.href=sourceUrl.href;a.target='_blank';a.rel='noopener noreferrer';
+        a.className='study-ai-image-card';
+        const img=document.createElement('img');img.src=imageUrl.href;
+        img.alt='Imagem do acervo Wikimedia: '+(item.title||'');
+        img.loading='lazy';img.decoding='async';
+        const title=document.createElement('strong');
+        title.textContent=String(item.title||'Imagem científica').slice(0,150);
+        const credit=document.createElement('small');
+        credit.textContent=(item.credit||'Wikimedia Commons')+' · '+(item.license||'Consulte a licença');
+        a.append(img,title,credit);wrap.append(a);
+      }catch{}
+    }
+    if(wrap.childElementCount)bubble.append(wrap);
+  }
+  async function requestImages(msg){
+    if(msg.imageLoading)return;
+    let cfg;
+    try{cfg=saveConnection()}catch(e){showConfig(true);notice(e.message,true);return}
+    msg.imageLoading=true;renderMessages();
+    try{
+      const query=msg.imageQuery||'stomatal crypt Nerium oleander';
+      const res=await fetchWithTimeout(cfg.endpoint+'/images',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.token},
+        body:JSON.stringify({query})
+      },16000);
+      const response=await res.json().catch(()=>({}));
+      if(!res.ok)throw Error(response.error||'Não foi possível buscar ilustrações.');
+      msg.images=Array.isArray(response.images)?response.images:[];
+      msg.imagesLoaded=true;persistConversation();
+      notice(msg.images.length?'Imagens reais do Wikimedia Commons, com fonte e licença.':'Nenhuma imagem encontrada. Tente pesquisar outro termo.',!msg.images.length);
+    }catch(e){notice('⚠️ '+(e.message||e),true)}
+    finally{msg.imageLoading=false;renderMessages()}
+  }
   function renderMessages(){
     thread.replaceChildren();
     EMPTY.hidden=messages.length>0;
@@ -95,8 +150,18 @@ export function initStudyQuestions(frame){
         bubble.append(excerpt);
       }
       const body=document.createElement('p');
-      body.textContent=msg.content;
+      if(msg.role==='assistant')appendFormattedText(body,msg.content);
+      else body.textContent=msg.content;
       bubble.append(body);
+      if(msg.role==='assistant'){
+        renderImages(bubble,msg);
+        const imageButton=document.createElement('button');
+        imageButton.type='button';imageButton.className='study-ai-image-button';
+        imageButton.textContent=msg.imageLoading?'⌛ Buscando imagens…':msg.imagesLoaded?'🖼 Atualizar imagens':'🖼 Ver imagens científicas';
+        imageButton.disabled=!!msg.imageLoading;
+        imageButton.addEventListener('click',()=>void requestImages(msg));
+        bubble.append(imageButton);
+      }
       thread.append(bubble);
     }
     requestAnimationFrame(()=>{thread.scrollTop=thread.scrollHeight});
@@ -224,9 +289,14 @@ export function initStudyQuestions(frame){
       const body=await res.json().catch(()=>({}));
       if(!res.ok)throw Error(body.error||'Não foi possível consultar o tutor.');
       if(typeof body.answer!=='string'||!body.answer.trim())throw Error('Resposta vazia da IA.');
-      messages.push({role:'assistant',content:body.answer.trim()});
+      const imageIntent=/imagem|imagens|ilustra|figura|foto|micrografia|mostr[ea]/i.test(next.text);
+      const imageTopic=/criptas?\s+estom[aá]tic|est[oô]mato/i.test(next.text+' '+body.answer)
+        ?'stomatal crypt Nerium oleander':next.text.slice(0,160);
+      const answerMessage={role:'assistant',content:body.answer.trim(),imageQuery:imageTopic};
+      messages.push(answerMessage);
       messages=messages.slice(-16);
       persistConversation();renderMessages();
+      if(imageIntent)void requestImages(answerMessage);
       input.value='';applyQuote('');remembered='';
       notice('');
     }catch(e){
