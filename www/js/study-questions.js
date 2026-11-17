@@ -92,7 +92,20 @@ export function initStudyQuestions(frame){
     }
   }
   function renderImages(bubble,msg){
-    if(!Array.isArray(msg.images)||!msg.images.length)return;
+    if(!Array.isArray(msg.images)||!msg.images.length){
+      if(msg.imageLoading){
+        const loading=document.createElement('small');
+        loading.className='study-ai-image-status';
+        loading.textContent='Buscando micrografias e ilustrações no acervo científico…';
+        bubble.append(loading);
+      }else if(msg.imagesLoaded){
+        const empty=document.createElement('small');
+        empty.className='study-ai-image-status';
+        empty.textContent='Nenhuma imagem correspondente foi encontrada no acervo. Experimente outro nome científico.';
+        bubble.append(empty);
+      }
+      return;
+    }
     const wrap=document.createElement('div');
     wrap.className='study-ai-image-gallery';
     for(const item of msg.images){
