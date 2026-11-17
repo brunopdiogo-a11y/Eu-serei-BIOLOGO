@@ -136,7 +136,7 @@ export function initStudyQuestions(frame){
    try{cfg=saveConnection()}catch(e){showConfig(true);updateStatus(e.message);return}
    busy=true;send.disabled=true;
    const text=prompt||'Explique o trecho selecionado em linguagem clara, com precisão científica e um exemplo.';
-   const history=messages.slice(-8);
+   const history=messages.slice(-8).map(item=>({role:item.role,content:item.context||item.content}));
    updateStatus('Consultando a IA…');
    try{
      const response=await withLimit(cfg.endpoint+'/chat',{
@@ -148,7 +148,7 @@ export function initStudyQuestions(frame){
      const data=await response.json().catch(()=>({}));
      if(!response.ok)throw Error(data.error||'Não foi possível obter a resposta da IA.');
      if(typeof data.answer!=='string'||!data.answer.trim())throw Error('A IA retornou uma resposta vazia.');
-     messages.push({role:'user',content:text},{role:'assistant',content:data.answer});
+     messages.push({role:'user',content:text,context:excerpt?'Trecho estudado: '+excerpt.slice(0,1800)+'\nPergunta: '+text:text},{role:'assistant',content:data.answer});
      messages=messages.slice(-12);persist();renderThread();
      question.value='';
      // A referência é enviada somente na primeira pergunta; seguimento
