@@ -1,6 +1,13 @@
 name: Publicar Tutor IA EU SEREI BIOLOGO
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'ai-worker/src/**'
+      - 'ai-worker/test/**'
+      - 'ai-worker/wrangler.toml'
+      - '.github/workflows/deploy-ai-worker.yml'
 
 permissions:
   contents: read
