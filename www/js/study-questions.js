@@ -98,7 +98,10 @@ export function initStudyQuestions(frame){
     for(const item of msg.images){
       try{
         const imageUrl=new URL(item.thumbnail),sourceUrl=new URL(item.source);
-        if(imageUrl.protocol!=='https:'||imageUrl.hostname!=='upload.wikimedia.org'||
+        const allowedThumbnail=imageUrl.hostname==='upload.wikimedia.org'||
+          (imageUrl.hostname==='commons.wikimedia.org'&&
+            imageUrl.pathname.startsWith('/wiki/Special:FilePath/'));
+        if(imageUrl.protocol!=='https:'||!allowedThumbnail||
            sourceUrl.protocol!=='https:'||sourceUrl.hostname!=='commons.wikimedia.org')continue;
         const a=document.createElement('a');
         a.href=sourceUrl.href;a.target='_blank';a.rel='noopener noreferrer';
