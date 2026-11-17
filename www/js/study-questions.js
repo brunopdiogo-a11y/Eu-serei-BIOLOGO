@@ -82,7 +82,7 @@ export function initStudyQuestions(frame){
   }
   function appendFormattedText(parent,text){
     // Renderização controlada de **negrito**, sem interpretar HTML vindo da IA.
-    const pieces=String(text||'').split(/(\\*\\*[^*\\n]{1,120}\\*\\*)/g);
+    const pieces=String(text||'').split(/(\*\*[^*\n]{1,120}\*\*)/g);
     for(const part of pieces){
       if(part.startsWith('**')&&part.endsWith('**')&&part.length>4){
         const strong=document.createElement('strong');
