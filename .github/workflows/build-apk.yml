@@ -72,6 +72,7 @@ jobs:
           mkdir -p "$JAVA_DIR"
           cp android-native/StudySpeechPlugin.java "$JAVA_DIR/"
           cp android-native/AppHealthPlugin.java "$JAVA_DIR/"
+          cp android-native/StudyDictationPlugin.java "$JAVA_DIR/"
           cp android-native/StudySpeechService.java "$JAVA_DIR/"
           cp android-native/StudyControlsPlugin.java "$JAVA_DIR/"
           cp android-native/StudyControlsService.java "$JAVA_DIR/"
@@ -91,6 +92,9 @@ jobs:
           if 'registerPlugin(AppHealthPlugin.class)' not in s:
               s=s.replace('registerPlugin(StudySpeechPlugin.class);', 'registerPlugin(StudySpeechPlugin.class);\n        registerPlugin(AppHealthPlugin.class);')
               p.write_text(s)
+          if 'registerPlugin(StudyDictationPlugin.class)' not in s:
+              s=s.replace('registerPlugin(AppHealthPlugin.class);','registerPlugin(AppHealthPlugin.class);\n        registerPlugin(StudyDictationPlugin.class);')
+              p.write_text(s)
           if 'registerPlugin(StudyAlarmPlugin.class)' not in s:
               s=s.replace('registerPlugin(AppHealthPlugin.class);','registerPlugin(AppHealthPlugin.class);\n        registerPlugin(StudyAlarmPlugin.class);')
               p.write_text(s)
@@ -100,6 +104,7 @@ jobs:
           assert 'registerPlugin(StudyControlsPlugin.class)' in p.read_text()
           assert 'registerPlugin(StudyAlarmPlugin.class)' in p.read_text()
           assert 'registerPlugin(AppHealthPlugin.class)' in p.read_text()
+          assert 'registerPlugin(StudyDictationPlugin.class)' in p.read_text()
           manifest=Path('android/app/src/main/AndroidManifest.xml')
           m=manifest.read_text()
           for permission in ['android.permission.FOREGROUND_SERVICE','android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK','android.permission.WAKE_LOCK','android.permission.POST_NOTIFICATIONS','android.permission.VIBRATE','android.permission.USE_FULL_SCREEN_INTENT']:
