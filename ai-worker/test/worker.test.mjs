@@ -47,3 +47,32 @@ test('retorna erro de cota gratuita quando o modelo limitar',async()=>{
   const res=await worker.fetch(chat({question:'Como funciona a luz?'}),e);
   assert.equal(res.status,429);
 });
+
+test('busca imagens do Wikimedia Commons e devolve origem e licença',async()=>{
+  const original=globalThis.fetch;
+  let requested='';
+  try{
+    globalThis.fetch=async(url)=>{
+      requested=String(url);
+      return Response.json({query:{pages:[{
+        ns:6,title:'File:Stomatal crypt Nerium.jpg',
+        imageinfo:[{mime:'image/jpeg',
+          thumburl:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/file.jpg',
+          descriptionurl:'https://commons.wikimedia.org/wiki/File:Stomatal_crypt_Nerium.jpg',
+          extmetadata:{LicenseShortName:{value:'CC BY-SA 4.0'},Artist:{value:'Pesquisador'}}
+        }]
+      }]}});
+    };
+    const res=await worker.fetch(new Request('https://tutor.example.workers.dev/images',{
+      method:'POST',headers:{Origin:origin,'Content-Type':'application/json',
+        Authorization:'Bearer '+env.STUDY_ACCESS_TOKEN},
+      body:JSON.stringify({query:'criptas estomáticas'})
+    }),env);
+    assert.equal(res.status,200);
+    const body=await res.json();
+    assert.equal(body.images.length,1);
+    assert.equal(body.images[0].license,'CC BY-SA 4.0');
+    assert.ok(requested.includes('commons.wikimedia.org'));
+    assert.ok(decodeURIComponent(requested).includes('stomatal crypt Nerium oleander'));
+  }finally{globalThis.fetch=original}
+});
