@@ -26,15 +26,16 @@
 </header>
 <main id="main" tabindex="-1">
 <section class="view visible" id="view-home">
-  <div class="hero">
+  <div class="home-intro">
     <div class="eyebrow">SEU ESPAÇO DE APRENDIZAGEM</div>
-    <h1>Estude com clareza,<br>avance todos os dias.</h1>
-    <p class="quote">“A educação não é preparação para a vida; a educação é a própria vida.” <span>— John Dewey (tradução livre)</span></p>
-    <button class="btn primary" data-view="courses">📚 Explorar disciplinas <span>→</span></button>
+    <h1>Estude com clareza, avance todos os dias.</h1>
+    <p>Acompanhe seu progresso e mantenha seu ritmo de aprendizagem.</p>
   </div>
-  <div class="section-header"><h2>🔔 Para você hoje</h2><button class="link-button" data-view="planning">Ver planejamento →</button></div>
+  <div class="section-header home-dashboard-heading"><h2>📊 Seu painel de estudos</h2><span class="home-swipe-hint">Deslize para explorar <span aria-hidden="true">→</span></span></div>
+  <div class="home-carousel" id="home-dashboard" aria-label="Indicadores do planejamento, deslize horizontalmente" tabindex="0"></div>
+  <div class="home-carousel-dots" id="home-dashboard-dots" aria-label="Indicador do card atual"></div>
+  <div class="section-header"><h2>🔔 Para você hoje</h2></div>
   <div id="home-alerts" class="notice-list"></div>
-  <div class="quiet-prompt"><span>🌱</span><div><strong>Um passo de cada vez</strong><p>Sem precisar fazer tudo hoje. Sua próxima sessão começa pelo que é mais importante.</p></div><button class="btn ghost" data-view="planning">Planejar</button></div>
 </section>
 <section class="view" id="view-courses">
   <div class="page-heading"><div class="eyebrow">BIBLIOTECA</div><h1>📚 Disciplinas</h1><p>Todo o conteúdo organizado em um só lugar. Começaremos por Ecologia Vegetal.</p></div>
