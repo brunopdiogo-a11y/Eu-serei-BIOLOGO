@@ -73,8 +73,9 @@ export function initStudyQuestions(frame){
        return;
      }
    }catch(err){console.warn('Navegador nativo indisponível',err)}
-   const child=window.open(url,'_blank','noopener,noreferrer');
-   if(!child)status.textContent='Não foi possível abrir outra aba. O pedido foi copiado: abra chatgpt.com e cole a mensagem.';
+   // No Android e em alguns navegadores a janela com noopener retorna null
+   // mesmo quando abriu corretamente. Não usamos esse retorno para afirmar erro.
+   window.open(url,'_blank');
  }
  send.addEventListener('click',async()=>{
    const userQuestion=message.value.trim();
