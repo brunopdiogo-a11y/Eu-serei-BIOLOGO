@@ -7,5 +7,7 @@ assert.equal(prepareScientificSpeech('Silva; Costa (2018) são autores.',opts),'
 assert.equal(prepareScientificSpeech('Fotossíntese (Souza, 2020).',{skipReferences:false}),'Fotossíntese (Souza, 2020).');
 assert.deepEqual(splitScientificSentences('C3 e C4 são vias. A luz influencia o processo.'),['C3 e C4 são vias.','A luz influencia o processo.']);
 assert.deepEqual(splitScientificSentences('Segundo autor et al. a luz é importante.'),['Segundo autor et al. a luz é importante.']);
-assert.equal(prepareScientificSpeech('Fatores, água, e luz.'),'Fatores, água e luz.');
-console.log('Leitura científica: 7 verificações concluídas.');
+assert.equal(prepareScientificSpeech('Fatores, água, e luz.'),'Fatores água e luz.');
+assert.equal(prepareScientificSpeech('Fatores, água, e luz.',{shortCommaPauses:false}),'Fatores, água e luz.');
+assert.equal(prepareScientificSpeech('Água,,, luz; temperatura.',''),'Água luz; temperatura.');
+console.log('Leitura científica: 9 verificações concluídas.');
