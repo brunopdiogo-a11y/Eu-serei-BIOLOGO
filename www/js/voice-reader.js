@@ -126,12 +126,14 @@ export function initStageSpeech(frame, root) {
   const prefSwitches=[
     ['voice-skip-references','skipReferences',true],
     ['voice-smooth-punctuation','smoothPunctuation',true],
+    ['voice-short-commas','shortCommaPauses',true],
     ['voice-expand-acronyms','expandAcronyms',true],
     ['voice-auto-scroll','autoScroll',true]
   ];
   const speechOptions=()=>({
     skipReferences:preferences.skipReferences!==false,
     smoothPunctuation:preferences.smoothPunctuation!==false,
+    shortCommaPauses:preferences.shortCommaPauses!==false,
     expandAcronyms:preferences.expandAcronyms!==false
   });
   function persistPreferences(){
@@ -210,6 +212,14 @@ export function initStageSpeech(frame, root) {
       Promise.resolve(result).catch(err=>console.warn('Painel de áudio não disponível',err));
     }catch(err){console.warn('Painel de áudio indisponível',err);}
   }
+  let lastNarrationState=null;
+  function emitNarrationState(){
+    const playing=active&&!paused;
+    const state=playing?'playing':active&&paused?'paused':'stopped';
+    if(state===lastNarrationState)return;
+    lastNarrationState=state;
+    document.dispatchEvent(new CustomEvent('study:narration-state',{detail:{state,playing}}));
+  }
   function resetButtons(){
     headerListen.textContent=active?(paused?'▶ Continuar':'⏸ Pausar'):'🔊 Ouvir';
     headerListen.setAttribute('aria-label',active?(paused?'Continuar a narração':'Pausar a narração'):'Ouvir a partir do parágrafo selecionado');
@@ -222,6 +232,7 @@ export function initStageSpeech(frame, root) {
     playerPosition.textContent=parts.length?(Math.max(0,paragraphIndex())+1)+'/'+paragraphs.length:'0/0';
     updateParagraphDisplay();
     syncMedia();
+    emitNarrationState();
   }
   function normalized(text){
     return String(text||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('pt-BR');
