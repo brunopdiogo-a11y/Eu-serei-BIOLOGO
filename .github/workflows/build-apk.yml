@@ -34,6 +34,8 @@ jobs:
         run: |
           node --check www/js/voice-reader.js
           node --check www/js/study-questions.js
+          node --check ai-worker/src/index.js
+          node --test ai-worker/test/worker.test.mjs
           node --check www/js/speech-text.js
           node scripts/test-speech-text.mjs
           node --check www/js/app.js
