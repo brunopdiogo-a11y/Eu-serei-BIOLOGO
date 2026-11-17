@@ -73,6 +73,6 @@ test('busca imagens do Wikimedia Commons e devolve origem e licença',async()=>{
     assert.equal(body.images.length,1);
     assert.equal(body.images[0].license,'CC BY-SA 4.0');
     assert.ok(requested.includes('commons.wikimedia.org'));
-    assert.ok(decodeURIComponent(requested).includes('stomatal crypt Nerium oleander'));
+    assert.equal(new URL(requested).searchParams.get('gsrsearch'),'stomatal crypt Nerium oleander');
   }finally{globalThis.fetch=original}
 });
