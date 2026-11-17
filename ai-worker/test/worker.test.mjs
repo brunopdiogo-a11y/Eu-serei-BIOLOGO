@@ -70,9 +70,27 @@ test('busca imagens do Wikimedia Commons e devolve origem e licença',async()=>{
     }),env);
     assert.equal(res.status,200);
     const body=await res.json();
-    assert.equal(body.images.length,1);
-    assert.equal(body.images[0].license,'CC BY-SA 4.0');
+    assert.ok(body.images.length>=2);
+    assert.ok(body.images.some(image=>image.license==='CC BY-SA 4.0'));
+    assert.ok(body.images.some(image=>image.source.includes('Stomatal_crypts')));
     assert.ok(requested.includes('commons.wikimedia.org'));
     assert.equal(new URL(requested).searchParams.get('gsrsearch'),'stomatal crypt Nerium oleander');
+  }finally{globalThis.fetch=original}
+});
+
+test('retorna micrografias conhecidas quando Wikimedia não responde',async()=>{
+  const original=globalThis.fetch;
+  try{
+    globalThis.fetch=async()=>{throw Error('Wikimedia unavailable')};
+    const route=new Request('https://tutor.example.workers.dev/images',{
+      method:'POST',
+      headers:{Origin:origin,'Content-Type':'application/json','Authorization':'Bearer '+env.STUDY_ACCESS_TOKEN},
+      body:JSON.stringify({query:'stomatal crypt Nerium oleander'})
+    });
+    const response=await worker.fetch(route,env);
+    assert.equal(response.status,200);
+    const body=await response.json();
+    assert.ok(body.images.length>=2);
+    assert.ok(body.images.every(x=>x.source.startsWith('https://commons.wikimedia.org/')));
   }finally{globalThis.fetch=original}
 });
