@@ -1,44 +1,39 @@
-# Tutor de IA — EU SEREI BIOLOGO
+# Tutor de IA — EU SEREI BIOLOGO (Cloudflare Workers AI)
 
-A aula continua privada no dispositivo. Apenas o **trecho selecionado**, a **pergunta** e as últimas mensagens da conversa são enviados ao serviço de IA após confirmação.
+A IA funciona **dentro do aplicativo** usando Cloudflare Workers AI, sem precisar de `OPENAI_API_KEY` nem Gemini API. O modelo atual é `@cf/meta/llama-3.1-8b-instruct-fp8-fast`, sujeito às condições e à franquia gratuita do Cloudflare Workers AI.
 
-## Caminho recomendado pelo GitHub (sem terminal)
+## Como ativar pelo GitHub (sem computador)
 
-1. Crie sua conta em https://dash.cloudflare.com/ e abra **Workers & Pages**. Identifique seu **Account ID** e crie um token com permissão para editar Workers (Workers Scripts: Edit) e a conta correta.
-2. Na plataforma OpenAI, crie um projeto e a chave de API em https://platform.openai.com/api-keys. Defina um orçamento e monitore o uso.
-3. Nas **Settings → Secrets and variables → Actions** deste repositório, cadastre exatamente quatro segredos:
-   - `CLOUDFLARE_ACCOUNT_ID` — ID da conta Cloudflare;
-   - `CLOUDFLARE_API_TOKEN` — token de edição de Workers (não é sua senha);
-   - `OPENAI_API_KEY` — chave da plataforma OpenAI;
-   - `STUDY_ACCESS_TOKEN` — código aleatório privado com pelo menos 24 caracteres que você guardará para digitar no aplicativo.
-4. Acesse **Actions → Publicar Tutor IA EU SEREI BIOLOGO → Run workflow**. A automação publica o Worker e envia os segredos ao Cloudflare sem colocá-los no repositório.
-5. No painel Cloudflare, copie a URL pública HTTPS do Worker (termina em `.workers.dev`).
-6. No APK, entre em **Ecologia Vegetal → ? → Configurar conexão com a IA**, cole a URL e seu `STUDY_ACCESS_TOKEN`, depois teste a conexão.
+1. Na conta Cloudflare, crie o token de API de publicação e copie o **Account ID**. Você já adicionou estes Secrets ao GitHub:
+   - `CLOUDFLARE_ACCOUNT_ID`
+   - `CLOUDFLARE_API_TOKEN`
+2. Crie um código **aleatório e privado, com no mínimo 24 caracteres**, que será a senha de acesso ao tutor. Não use seu login, senha do Google, nem a chave da OpenAI.
+3. No repositório GitHub, entre em **Settings → Secrets and variables → Actions → New repository secret** e cadastre:
+   - **Name:** `STUDY_ACCESS_TOKEN`
+   - **Secret:** o código criado no passo anterior.
+4. Entre em **Actions → Publicar Tutor IA EU SEREI BIOLOGO → Run workflow**. O GitHub enviará o código do Worker e o Secret para o Cloudflare.
+5. No painel **Cloudflare → Workers & Pages → eu-serei-biologo-tutor**, localize a URL HTTPS `.workers.dev` publicada. O Worker só terá endereço público depois que a publicação funcionar.
+6. Abra o APK atualizado, acesse Ecologia Vegetal, toque em **? → Configurar conexão com a IA**. Informe a URL do Worker e o **mesmo código** do passo 2. Toque em **Testar conexão e salvar** e faça uma pergunta.
 
-**Nunca compartilhe tokens, chaves de API ou senhas em mensagens, imagens ou arquivos públicos.**
-A implementação só funciona após essas configurações; o código público sozinho não ativa a IA.
+**O Secret `OPENAI_API_KEY` que aparece no GitHub NÃO é usado nesta versão.** Você pode excluí-lo caso não tenha outra finalidade. Nunca compartilhe segredos na conversa, nos prints ou em arquivos públicos.
 
-## Implantação inicial (uma vez)
+## Como funciona
 
-1. Crie uma conta Cloudflare em https://dash.cloudflare.com/ (Workers & Pages).
-2. Instale Node.js e abra um terminal na pasta `ai-worker` do repositório.
-3. Execute `npx wrangler login` e `npx wrangler deploy`.
-4. No mesmo diretório, execute `npx wrangler secret put OPENAI_API_KEY` e informe sua chave da plataforma OpenAI (https://platform.openai.com/api-keys).
-5. Crie um código **aleatório de pelo menos 24 caracteres**, distinto da chave OpenAI, e execute `npx wrangler secret put STUDY_ACCESS_TOKEN`. Guarde esse código em um gerenciador de senhas.
-6. Copie o endereço HTTPS exibido pelo Wrangler (por exemplo, `https://eu-serei-biologo-tutor.<sua-conta>.workers.dev`). Não há URL pronta antes da implantação.
-7. Abra Ecologia Vegetal no APK, toque em **?**, configure **Endereço da API** com a URL do passo 6 e **Código de acesso** com o token do passo 5. Use **Testar conexão**.
+- O conteúdo das aulas continua privado no aparelho. Somente um trecho selecionado, a pergunta e as últimas mensagens da conversa são enviados ao Worker quando você toca em **Perguntar à IA**.
+- O Worker autentica o pedido com `STUDY_ACCESS_TOKEN` e consulta o binding `env.AI` do Cloudflare. As respostas retornam para a janela no próprio app.
+- A chave do Cloudflare usada para implantar o Worker fica apenas no GitHub Actions. Nenhum token do Cloudflare ou chave de API da OpenAI é colocado no APK.
+- O código de acesso do tutor fica guardado apenas durante a sessão do aplicativo (sessionStorage), e a URL pode ser reutilizada.
 
-**Atenção:** sua assinatura ChatGPT Plus não paga a API. A API é faturada separadamente. Configure orçamento e alertas de uso na plataforma OpenAI.
+## Custos e proteção
 
-### Segurança e limites
+Workers AI tem franquia gratuita diária sujeita a limites, atualmente **10.000 Neurons/dia** no plano Free. O modelo escolhido consome parte dessa franquia a cada consulta. Quando o limite for atingido, o app mostrará uma mensagem em vez de prometer acesso ilimitado. Confira os limites e planos em https://developers.cloudflare.com/workers-ai/platform/pricing/.
 
-- A chave `OPENAI_API_KEY` fica exclusivamente nos Secrets do Worker e jamais é inserida no HTML, APK ou GitHub.
-- O token `STUDY_ACCESS_TOKEN` limita acesso ao endpoint; não é a senha do ChatGPT. Guarde-o como segredo. O APK mantém o token somente na sessão aberta; você precisará inseri-lo novamente depois de fechar a sessão.
-- O endpoint aceita uma pergunta de até 1.500 caracteres, trecho de 2.500 caracteres, até 8 mensagens anteriores e resposta limitada a 800 tokens. As requisições não são armazenadas pelo código do Worker (`store:false` na API).
-- A proteção por token reduz o acesso indevido, mas **não constitui limitação rígida de gastos**; configure orçamento e limites na OpenAI antes de compartilhar o app. Para vários usuários, implementar autenticação individual, cotas/rate limiting com Durable Objects ou Cloudflare Rate Limiting e mecanismos antiabuso antes de expandir o acesso.
-- Não registre prompts, tokens ou chaves nos logs.
-- Para verificar se o Worker está pronto: abra `/health` no endereço implantado; deve retornar `configured:true`.
+**A franquia gratuita não é garantia de custo zero para sempre**: mantenha sua conta no plano gratuito se não desejar cobranças além da franquia. Não habilite pagamento automático ou plano pago sem avaliar.
 
-### Testes
+A segurança por token é adequada para testar individualmente, mas **não é autenticação multiusuário** nem estabelece limite rígido por pessoa. Antes de disponibilizar publicamente, é preciso criar usuários individuais, revogação de tokens e controle de volume/rate limiting.
 
-Na pasta raiz do repositório: `node --test ai-worker/test/worker.test.mjs`.
+## Diagnóstico
+
+Abra `https://SEU-WORKER.workers.dev/health` e confira o campo `configured`: ele fica `true` quando o binding de IA e o código de acesso estão configurados.
+
+Na raiz do repositório, os testes são executados com `node --test ai-worker/test/worker.test.mjs`. São executados também no processo de compilação do APK e na publicação do Worker.
