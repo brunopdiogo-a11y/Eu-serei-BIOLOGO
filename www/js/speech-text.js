@@ -3,7 +3,7 @@
  * intactos na tela: esta função só prepara uma cópia da frase para o TTS.
  */
 export function prepareScientificSpeech(value, options={}){
-  const settings={skipReferences:true,smoothPunctuation:true,expandAcronyms:true,...options};
+  const settings={skipReferences:true,smoothPunctuation:true,expandAcronyms:true,shortCommaPauses:true,...options};
   let text=String(value??'').replace(/\s+/gu,' ').trim();
   if(!text)return '';
   if(settings.skipReferences){
@@ -24,6 +24,12 @@ export function prepareScientificSpeech(value, options={}){
     text=text.replace(/,\s*,+/gu,', ').replace(/,\s*(?=[.!?;])/gu,'');
     text=text.replace(/(\b[\p{L}\p{N}]+),\s+e\s+(?=[\p{L}])/gu,'$1 e ');
     text=text.replace(/;\s*;/gu,';');
+  }
+  if(settings.shortCommaPauses){
+    // TTS Android impõe pausas próprias nas vírgulas e pode alongá-las.
+    // Apenas na cópia falada, removemos as vírgulas; ponto e ponto-e-vírgula
+    // continuam sendo delimitadores de frase, portanto mais longos.
+    text=text.replace(/,\s*/gu,' ');
   }
   return text.replace(/\s{2,}/gu,' ').trim();
 }
