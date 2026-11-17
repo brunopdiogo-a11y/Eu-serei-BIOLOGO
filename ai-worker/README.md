@@ -2,6 +2,22 @@
 
 A aula continua privada no dispositivo. Apenas o **trecho selecionado**, a **pergunta** e as últimas mensagens da conversa são enviados ao serviço de IA após confirmação.
 
+## Caminho recomendado pelo GitHub (sem terminal)
+
+1. Crie sua conta em https://dash.cloudflare.com/ e abra **Workers & Pages**. Identifique seu **Account ID** e crie um token com permissão para editar Workers (Workers Scripts: Edit) e a conta correta.
+2. Na plataforma OpenAI, crie um projeto e a chave de API em https://platform.openai.com/api-keys. Defina um orçamento e monitore o uso.
+3. Nas **Settings → Secrets and variables → Actions** deste repositório, cadastre exatamente quatro segredos:
+   - `CLOUDFLARE_ACCOUNT_ID` — ID da conta Cloudflare;
+   - `CLOUDFLARE_API_TOKEN` — token de edição de Workers (não é sua senha);
+   - `OPENAI_API_KEY` — chave da plataforma OpenAI;
+   - `STUDY_ACCESS_TOKEN` — código aleatório privado com pelo menos 24 caracteres que você guardará para digitar no aplicativo.
+4. Acesse **Actions → Publicar Tutor IA EU SEREI BIOLOGO → Run workflow**. A automação publica o Worker e envia os segredos ao Cloudflare sem colocá-los no repositório.
+5. No painel Cloudflare, copie a URL pública HTTPS do Worker (termina em `.workers.dev`).
+6. No APK, entre em **Ecologia Vegetal → ? → Configurar conexão com a IA**, cole a URL e seu `STUDY_ACCESS_TOKEN`, depois teste a conexão.
+
+**Nunca compartilhe tokens, chaves de API ou senhas em mensagens, imagens ou arquivos públicos.**
+A implementação só funciona após essas configurações; o código público sozinho não ativa a IA.
+
 ## Implantação inicial (uma vez)
 
 1. Crie uma conta Cloudflare em https://dash.cloudflare.com/ (Workers & Pages).
