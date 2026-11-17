@@ -25,6 +25,14 @@ export function initStudyQuestions(frame){
   let remembered='',selectedExcerpt='',messages=[],busy=false;
   let recognized=null,recognitionActive=false,selectionWatch=null;
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const android=window.Capacitor?.isNativePlatform?.()&&window.Capacitor?.getPlatform?.()==='android';
+  const androidDictation=android&&window.Capacitor?.isPluginAvailable?.('StudyDictation');
+  async function nativeDictation(){
+    const cap=window.Capacitor;
+    if(cap.Plugins?.StudyDictation?.recognize)return cap.Plugins.StudyDictation.recognize();
+    if(typeof cap.nativePromise==='function')return cap.nativePromise('StudyDictation','recognize',{});
+    throw Error('Ditado Android indisponível neste APK.');
+  }
 
   function retrieve(key,area=localStorage){try{return area.getItem(key)||''}catch{return ''}}
   function remember(key,val,area=localStorage){try{area.setItem(key,val)}catch{}}
@@ -187,7 +195,7 @@ export function initStudyQuestions(frame){
   }
   function setBusy(yes){
     busy=yes;send.disabled=yes;input.disabled=yes;
-    mic.disabled=yes||!SpeechRecognition;
+    mic.disabled=yes||!(SpeechRecognition||androidDictation);
     send.setAttribute('aria-label',yes?'Aguardando resposta':'Enviar pergunta');
   }
   async function sendQuestion(){
@@ -236,7 +244,27 @@ export function initStudyQuestions(frame){
     }
   });
 
-  if(SpeechRecognition){
+  if(androidDictation){
+    mic.hidden=false;
+    mic.addEventListener('click',async()=>{
+      if(busy)return;
+      mic.disabled=true;
+      notice('🎤 Abra o reconhecimento de voz e fale sua pergunta.');
+      try{
+        const result=await nativeDictation();
+        const speech=String(result?.text||'').trim();
+        if(speech){
+          input.value=[input.value.trim(),speech].filter(Boolean).join(' ');
+          input.focus();
+          notice('Texto reconhecido. Confira antes de enviar.');
+        }else notice('Nenhuma fala reconhecida. Use o microfone novamente.',true);
+      }catch(e){
+        const explanation=String(e?.message||e);
+        if(/cancelad/i.test(explanation))notice('');
+        else notice('⚠️ '+explanation,true);
+      }finally{mic.disabled=false}
+    });
+  }else if(SpeechRecognition){
     mic.hidden=false;
     mic.addEventListener('click',()=>{
       if(recognitionActive){
