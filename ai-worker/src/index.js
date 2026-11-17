@@ -56,9 +56,34 @@ function validHistory(history){
  * Busca de material científico já publicado (não gera imagens).
  * Dados do Wikimedia Commons: imagens, licença e link para a origem.
  */
+// Referências anatômicas verificáveis para o tema da aula.
+// Special:FilePath é resolvido pelo Commons sem depender de resultados da API.
+// O nome do arquivo e a origem correspondem a fotografias reais do Wikimedia Commons.
+function curatedStomatalImages(query){
+  if(!/stomat|estom|cript|nerium|oleander/i.test(query))return [];
+  return [
+    {
+      title:"Criptas estomáticas na face inferior de uma folha de Nerium oleander (microscopia 400×)",
+      thumbnail:"https://commons.wikimedia.org/wiki/Special:FilePath/Stomatal_crypts_of_underside_oleander_leaf_(Nerium_oleander).jpg",
+      source:"https://commons.wikimedia.org/wiki/File:Stomatal_crypts_of_underside_oleander_leaf_(Nerium_oleander).jpg",
+      credit:"Wikimedia Commons · verificar autoria na página original",
+      license:"Consulte a licença na origem"
+    },
+    {
+      title:"Corte microscópico de folha de Nerium mostrando depressões com estômatos",
+      thumbnail:"https://commons.wikimedia.org/wiki/Special:FilePath/Angiosperm_Leaf_Stomatal_Pits_in_Nerium_(24010130808).jpg",
+      source:"https://commons.wikimedia.org/wiki/File:Angiosperm_Leaf_Stomatal_Pits_in_Nerium_(24010130808).jpg",
+      credit:"Wikimedia Commons",
+      license:"CC0 1.0"
+    }
+  ];
+}
 async function searchScientificImages(query){
   const normalized=safeText(query,180);
   if(!normalized)return [];
+  // A API nem sempre encontra arquivos com frases científicas longas;
+  // referências verificadas garantem material relevante para criptas.
+  const curated=curatedStomatalImages(normalized);
   let terms=normalized.replace(/[?!.,;:]/g," ").replace(/\s+/g," ").trim();
   if(/criptas?\s+estom[aá]tic|stomatal crypt/i.test(terms)){
     terms="stomatal crypt Nerium oleander";
@@ -68,12 +93,22 @@ async function searchScientificImages(query){
     gsrlimit:"8",prop:"imageinfo",iiprop:"url|mime|extmetadata",
     iiurlwidth:"800",format:"json",formatversion:"2"
   });
-  const response=await fetch("https://commons.wikimedia.org/w/api.php?"+params.toString(),{
-    headers:{"Accept":"application/json","User-Agent":"EuSereiBiologoTutor/1.0 (academic learning; Wikimedia Commons image lookup)"}
-  });
-  if(!response.ok)throw Error("O acervo Wikimedia não respondeu.");
-  const data=await response.json();
-  return (data.query?.pages||[])
+  let data;
+  try{
+    const response=await fetch("https://commons.wikimedia.org/w/api.php?"+params.toString(),{
+      headers:{
+        "Accept":"application/json",
+        "User-Agent":"EuSereiBiologoTutor/1.1 (https://github.com/brunopdiogo-a11y/Eu-serei-BIOLOGO; academic image search)",
+        "Api-User-Agent":"EuSereiBiologoTutor/1.1 (https://github.com/brunopdiogo-a11y/Eu-serei-BIOLOGO)"
+      }
+    });
+    if(!response.ok)throw Error("Consulta Wikimedia retornou "+response.status);
+    data=await response.json();
+  }catch(error){
+    if(curated.length)return curated;
+    throw error;
+  }
+  const found=(data.query?.pages||[])
     .filter(p=>p.ns===6)
     .map(p=>{
       const info=p.imageinfo?.[0]||{};
@@ -91,6 +126,7 @@ async function searchScientificImages(query){
         license:plain(metadata.LicenseShortName?.value||"Consulte a licença na origem")
       };
     }).filter(Boolean).slice(0,4);
+  return curated.length?[...curated,...found].slice(0,4):found;
 }
 export default {
   async fetch(request,env){
