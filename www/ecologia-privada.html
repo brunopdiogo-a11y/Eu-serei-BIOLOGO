@@ -50,6 +50,14 @@
 body.native-android .study-question-panel{inset:0!important}
 @media(max-width:600px){.study-question-head{padding:max(25px,env(safe-area-inset-top,0px)) 12px 8px!important}.study-ai-thread{padding:12px!important}.study-ai-composer{padding:8px 10px max(12px,env(safe-area-inset-bottom,12px))}.study-ai-bubble{max-width:91%}.study-ai-privacy{font-size:9px!important}.study-ai-heading strong{font-size:14px}.study-ai-top-controls{padding:2px 10px}}
 @media(prefers-reduced-motion:reduce){.study-ai-input-line #study-ai-microphone.is-listening{animation:none}}
+.study-ai-image-button{margin-top:10px;border:1px solid #cfe3d4;background:#eff8f1;color:#286e42;font:700 12px system-ui;padding:9px 12px;border-radius:9px;cursor:pointer}
+.study-ai-image-button:disabled{opacity:.5}
+.study-ai-image-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(175px,100%),1fr));gap:10px;margin:12px 0}
+.study-ai-image-card{display:grid;gap:5px;padding:7px;text-decoration:none;border:1px solid #dce8de;border-radius:11px;background:#f9fcf9;min-width:0}
+.study-ai-image-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:contain;background:#fff;border-radius:7px}
+.study-ai-image-card strong{font:700 12px/1.3 system-ui;color:#2e5940;overflow-wrap:anywhere}
+.study-ai-image-card small{font:10px/1.35 system-ui;color:#65826a}
+.study-ai-bubble p strong{font-weight:750}
 </style></head><body>
 <header class="reader-toolbar"><a href="./index.html" class="reader-brand">← EU SEREI BIOLOGO</a><div class="reader-toolbar-actions"><button type="button" id="reading-chapters" class="quiet-control">📚 Estudos</button><span class="speech-header-actions"><button type="button" id="voice-toggle" class="quiet-control" aria-label="Ouvir o parágrafo selecionado">🔊 Ouvir</button><button type="button" id="voice-settings-toggle" class="quiet-control speech-settings" aria-expanded="false" aria-controls="voice-panel" aria-label="Configurações da narração" title="Configurações da narração">⚙</button></span><button class="lesson-plan-button" id="lesson-plan-toggle" aria-expanded="false">📅 Cronograma</button></div></header><aside id="lesson-plan-panel" class="lesson-plan-panel" hidden><div id="lesson-plan-summary"></div></aside>
 <div id="message" class="error">Abrindo material privado…</div>
