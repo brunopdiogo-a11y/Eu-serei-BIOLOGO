@@ -20,11 +20,20 @@ export function initReadingLayout(frame){
  function focusStyles(doc){
    if(doc.getElementById('study-focus-style'))return;
    const style=doc.createElement('style');style.id='study-focus-style';
-   style.textContent='.study-focus-hidden{display:none!important}.study-focus-reader{margin-top:0!important;padding-top:0!important;scroll-margin-top:12px!important}';
+   style.textContent=`.study-focus-hidden{display:none!important}.study-focus-reader{margin-top:0!important;padding-top:0!important;scroll-margin-top:12px!important}
+@media(min-width:850px){
+ body.study-focus-wide-layout{width:100%!important;max-width:none!important}
+ .study-focus-wide-container{width:100%!important;max-width:none!important;min-width:0!important;grid-column:1/-1!important;flex:1 1 100%!important}
+ #articleReader.study-focus-reader{width:min(100%,960px)!important;max-width:960px!important;min-width:0!important;margin-left:auto!important;margin-right:auto!important;padding-inline:clamp(18px,3vw,42px)!important;box-sizing:border-box!important}
+ #articleReader.study-focus-reader img,#articleReader.study-focus-reader figure,#articleReader.study-focus-reader table{max-width:100%!important}
+}
+`;
    doc.head.append(style);
  }
  function clearFocus(){
    const doc=currentDoc();if(!doc)return;
+   doc.body.classList.remove('study-focus-wide-layout');
+   doc.querySelectorAll('.study-focus-wide-container').forEach(el=>el.classList.remove('study-focus-wide-container'));
    doc.querySelectorAll('.study-focus-hidden').forEach(el=>el.classList.remove('study-focus-hidden'));
    doc.querySelectorAll('.study-focus-reader').forEach(el=>el.classList.remove('study-focus-reader'));
    focus=false;frame.classList.remove('reader-focus');
@@ -57,6 +66,12 @@ export function initReadingLayout(frame){
      current=parent;
    }
    article.classList.add('study-focus-reader');
+   // O conteúdo privado costuma vir com colunas estreitas próprias. Liberamos
+   // os ancestrais da etapa apenas durante a leitura, somente no desktop.
+   for(let ancestor=article.parentElement;ancestor&&ancestor!==doc.body;ancestor=ancestor.parentElement){
+     ancestor.classList.add('study-focus-wide-container');
+   }
+   doc.body.classList.add('study-focus-wide-layout');
    frame.classList.add('reader-focus');focus=true;
    // Scroll contextual: leitura ocupa a área útil sem os cabeçalhos.
    requestAnimationFrame(()=>{try{article.scrollIntoView({block:'start',behavior:'instant'})}catch{}});
