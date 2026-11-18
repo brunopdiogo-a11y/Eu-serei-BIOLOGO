@@ -208,7 +208,96 @@ $('export').addEventListener('click',async()=>{
   status.textContent=err?.message==='cancelled'?'Salvamento cancelado; nenhum dado foi apagado.':'⚠️ Backup não salvo: '+(err?.message||String(err))+'. Seus dados continuam no aplicativo.';
  }finally{button.disabled=false;}
 });
-$('import').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{const text=await f.text();state=importState(text);render();fillPlan();$('backup-status').textContent='Backup restaurado com sucesso.';}catch(err){$('backup-status').textContent='Erro no backup: '+err.message;}e.target.value='';});
+// Importação segura do backup completo, sem sobrescrever avanços mais recentes do computador.
+const importDate=value=>Date.parse(value||'')||0;
+const isRecord=value=>!!value&&typeof value==='object'&&!Array.isArray(value);
+function mergeUniqueEntries(existing,incoming){
+ const map=new Map();
+ for(const item of [...existing,...incoming]){
+  if(!isRecord(item))continue;
+  const id=typeof item.id==='string'&&item.id?item.id:JSON.stringify(item);
+  if(!map.has(id))map.set(id,item);
+ }
+ return [...map.values()];
+}
+function mergeStudyState(existing,incoming){
+ const plans={...(existing.plans||{})};
+ for(const [id,plan] of Object.entries(incoming.plans||{})){
+  if(!isRecord(plan))continue;
+  if(!plans[id]||importDate(plan.updatedAt)>=importDate(plans[id].updatedAt))plans[id]=plan;
+ }
+ const completed={...(existing.completed||{})};
+ for(const [id,done] of Object.entries(incoming.completed||{}))completed[id]=Boolean(completed[id])||Boolean(done);
+ const useIncoming=importDate(incoming.updatedAt)>importDate(existing.updatedAt);
+ return {
+  ...existing,
+  startDate:useIncoming?(incoming.startDate||existing.startDate):existing.startDate,
+  durationDays:useIncoming?incoming.durationDays:existing.durationDays,
+  preferences:useIncoming?{...existing.preferences,...incoming.preferences}:existing.preferences,
+  plans,completed,
+  sessions:mergeUniqueEntries(existing.sessions||[],incoming.sessions||[]),
+  answers:mergeUniqueEntries(existing.answers||[],incoming.answers||[]),
+  reviewQueue:mergeUniqueEntries(existing.reviewQueue||[],incoming.reviewQueue||[]),
+  // A sincronização é por dispositivo, não deve marcar importações como enviadas ao Drive.
+  sync:existing.sync
+ };
+}
+function mergeEcology(existing,incoming){
+ if(!isRecord(incoming))return existing;
+ const output={...existing};
+ for(const [key,val] of Object.entries(incoming)){
+  if(key==='complete'){
+   const merged={...(isRecord(existing.complete)?existing.complete:{})};
+   for(const [stage,when] of Object.entries(isRecord(val)?val:{})){
+    if(!merged[stage]||importDate(when)>importDate(merged[stage]))merged[stage]=when;
+   }
+   output.complete=merged;
+  }else if(['checks','errors','review'].includes(key)&&isRecord(val)){
+   output[key]={...(isRecord(existing[key])?existing[key]:{}),...val};
+  }else if(key==='examHistory'&&Array.isArray(val)){
+   const seen=new Set(),merged=[];
+   for(const item of [...(Array.isArray(existing.examHistory)?existing.examHistory:[]),...val]){
+    const signature=JSON.stringify(item);
+    if(!seen.has(signature)){seen.add(signature);merged.push(item);}
+   }
+   output.examHistory=merged;
+  }else if(key==='lastStage'){
+   if(!output.lastStage)output.lastStage=val;
+  }else if(!(key in output))output[key]=val;
+ }
+ return output;
+}
+$('import').addEventListener('change',async e=>{
+ const file=e.target.files?.[0];if(!file)return;
+ try{
+  const raw=JSON.parse(await file.text());
+  const complete=raw?.backupFormat==='eu-serei-biologo-completo-v2';
+  const incoming=complete?raw.state:raw;
+  if(!isRecord(incoming)||incoming.schemaVersion!==1||!isRecord(incoming.completed)||!Array.isArray(incoming.sessions)||!Array.isArray(incoming.answers)||!isRecord(incoming.plans))throw Error('Formato de backup incompatível.');
+  if(complete&&raw.ecologyPresent&&(!isRecord(raw.ecologyProgress)||!isRecord(raw.ecologyProgress.complete)))throw Error('Progresso de Ecologia Vegetal inválido.');
+  const ecologyKey='ecologia-vegetal-estudos-v1';
+  const ecologyRaw=localStorage.getItem(ecologyKey);
+  let previousEcology={};
+  if(ecologyRaw!==null){
+   previousEcology=JSON.parse(ecologyRaw);
+   if(!isRecord(previousEcology))throw Error('Dados locais de Ecologia inválidos; nada foi importado.');
+  }
+  const previous=readState();
+  const merged=mergeStudyState(previous,incoming);
+  const ecology=complete&&raw.ecologyPresent?mergeEcology(previousEcology,raw.ecologyProgress):null;
+  // Preservar retrato integral antes de escrever; não apagar a fonte em caso de falha.
+  const safetyKey='eu-serei-biologo-before-import-'+Date.now();
+  localStorage.setItem(safetyKey,JSON.stringify({state:previous,ecologyProgress:previousEcology,ecologyPresent:ecologyRaw!==null}));
+  if(ecology!==null)localStorage.setItem(ecologyKey,JSON.stringify(ecology));
+  try{state=writeState(merged);}catch(error){
+   if(ecologyRaw===null)localStorage.removeItem(ecologyKey);else localStorage.setItem(ecologyKey,ecologyRaw);
+   throw error;
+  }
+  render();fillPlan();
+  $('backup-status').textContent='✅ Backup mesclado: '+incoming.sessions.length+' registros recebidos'+(complete&&raw.ecologyPresent?', com progresso de Ecologia Vegetal':'')+'. Dados anteriores preservados.';
+ }catch(error){$('backup-status').textContent='⚠️ Importação não concluída: '+(error?.message||String(error));}
+ e.target.value='';
+});
 
 /* Google Drive: conexão explícita, nenhuma credencial secreta armazenada. */
 const gdInput=$('google-client-id'),gdConnect=$('google-connect'),gdSync=$('google-sync'),gdDisconnect=$('google-disconnect'),gdStatus=$('google-sync-status');
