@@ -96,12 +96,12 @@ export function initStudyQuestions(frame){
       if(msg.imageLoading){
         const loading=document.createElement('small');
         loading.className='study-ai-image-status';
-        loading.textContent='Buscando micrografias e ilustrações no acervo científico…';
+        loading.textContent='Pesquisando fotografias, ilustrações e diagramas no Wikimedia Commons…';
         bubble.append(loading);
       }else if(msg.imagesLoaded){
         const empty=document.createElement('small');
         empty.className='study-ai-image-status';
-        empty.textContent='Nenhuma imagem correspondente foi encontrada no acervo. Experimente outro nome científico.';
+        empty.textContent='O Wikimedia Commons não retornou resultados para esta pesquisa. Isso não significa que não existam imagens na internet.';
         bubble.append(empty);
       }
       return;
@@ -151,7 +151,7 @@ export function initStudyQuestions(frame){
       if(!res.ok)throw Error(response.error||'Não foi possível buscar ilustrações.');
       msg.images=Array.isArray(response.images)?response.images:[];
       msg.imagesLoaded=true;persistConversation();
-      notice(msg.images.length?'Imagens reais do Wikimedia Commons, com fonte e licença.':'Nenhuma imagem encontrada. Tente pesquisar outro termo.',!msg.images.length);
+      notice(msg.images.length?'Encontradas '+msg.images.length+' imagens no Wikimedia Commons, com links para a origem.':'O Wikimedia Commons não retornou imagens nesta busca. Use “Buscar na internet” para ampliar a pesquisa.',!msg.images.length);
     }catch(e){notice('⚠️ '+(e.message||e),true)}
     finally{msg.imageLoading=false;renderMessages()}
   }
@@ -232,6 +232,13 @@ export function initStudyQuestions(frame){
         imageButton.disabled=!!msg.imageLoading;
         imageButton.addEventListener('click',()=>void requestImages(msg));
         visualActions.append(imageButton);
+        const webSearch=document.createElement('a');
+        webSearch.className='study-ai-image-button study-ai-external-image-link';
+        webSearch.href='https://www.google.com/search?tbm=isch&q='+encodeURIComponent((msg.imageQuery||msg.imageTopic||'ecologia vegetal').slice(0,180));
+        webSearch.target='_blank';webSearch.rel='noopener noreferrer';
+        webSearch.textContent='🌐 Buscar na internet';
+        webSearch.title='Abre pesquisa de imagens na web; confira a fonte e a licença.';
+        visualActions.append(webSearch);
         bubble.append(visualActions);
       }
       thread.append(bubble);
