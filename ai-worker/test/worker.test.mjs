@@ -50,10 +50,10 @@ test('retorna erro de cota gratuita quando o modelo limitar',async()=>{
 
 test('busca imagens do Wikimedia Commons e devolve origem e licença',async()=>{
   const original=globalThis.fetch;
-  let requested='';
+  const requested=[];
   try{
     globalThis.fetch=async(url)=>{
-      requested=String(url);
+      requested.push(String(url));
       return Response.json({query:{pages:[{
         ns:6,title:'File:Stomatal crypt Nerium.jpg',
         imageinfo:[{mime:'image/jpeg',
@@ -73,8 +73,8 @@ test('busca imagens do Wikimedia Commons e devolve origem e licença',async()=>{
     assert.ok(body.images.length>=2);
     assert.ok(body.images.some(image=>image.license==='CC BY-SA 4.0'));
     assert.ok(body.images.some(image=>image.source.includes('Stomatal_crypts')));
-    assert.ok(requested.includes('commons.wikimedia.org'));
-    assert.equal(new URL(requested).searchParams.get('gsrsearch'),'stomatal crypt Nerium oleander');
+    assert.ok(requested.some(url=>url.includes('commons.wikimedia.org')));
+    assert.ok(requested.some(url=>new URL(url).searchParams.get('gsrsearch')==='stomata leaf microscope'));
   }finally{globalThis.fetch=original}
 });
 
@@ -93,4 +93,28 @@ test('retorna micrografias conhecidas quando Wikimedia não responde',async()=>{
     assert.ok(body.images.length>=2);
     assert.ok(body.images.every(x=>x.source.startsWith('https://commons.wikimedia.org/')));
   }finally{globalThis.fetch=original}
+});
+
+test('busca visual extrai termos do assunto e tenta sinônimos quando a primeira busca vem vazia',async()=>{
+ const original=globalThis.fetch;const terms=[];
+ try{
+  globalThis.fetch=async url=>{
+   const term=new URL(String(url)).searchParams.get('gsrsearch');terms.push(term);
+   return Response.json(term==='xerophyte adaptations'?{query:{pages:[{
+    ns:6,title:'File:Xerophyte plant.jpg',imageinfo:[{mime:'image/jpeg',
+      thumburl:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/plant.jpg',
+      descriptionurl:'https://commons.wikimedia.org/wiki/File:Xerophyte_plant.jpg',
+      extmetadata:{LicenseShortName:{value:'CC BY-SA 4.0'}}
+    }]}}]}}:{query:{pages:[]}});
+  };
+  const response=await worker.fetch(new Request('https://tutor.example.workers.dev/images',{
+   method:'POST',headers:{Origin:origin,'Content-Type':'application/json',Authorization:'Bearer '+env.STUDY_ACCESS_TOKEN},
+   body:JSON.stringify({query:'Mostre imagens e ilustrações das adaptações das plantas do Cerrado à seca'})
+  }),env);
+  assert.equal(response.status,200);
+  const result=await response.json();
+  assert.ok(terms.includes('xerophyte adaptations'));
+  assert.ok(result.images.some(i=>i.source.includes('Xerophyte_plant')));
+  assert.equal(result.scope,'commons-only');
+ }finally{globalThis.fetch=original}
 });
