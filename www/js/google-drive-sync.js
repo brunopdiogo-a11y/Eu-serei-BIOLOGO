@@ -137,6 +137,19 @@ function loadGIS(){
  });
 }
 export async function connectDrive(clientId){
+ const native=!!(window.Capacitor?.isNativePlatform?.()&&window.Capacitor?.getPlatform?.()==='android');
+ if(native){
+  // Android OAuth is granted by Google Play Services, never by GIS inside WebView.
+  if(!window.Capacitor?.isPluginAvailable?.('NativeDriveAuth')){
+   throw Error('Este APK ainda não contém o login Google nativo. Instale a versão atualizada, sem apagar os dados.');
+  }
+  const plugin=window.Capacitor.Plugins?.NativeDriveAuth||window.Capacitor.registerPlugin('NativeDriveAuth');
+  const result=await plugin.authorize();
+  if(!result?.accessToken)throw Error('O Android não devolveu a autorização Google Drive.');
+  token=result.accessToken;
+  expiry=Date.now()+50*60*1000; // token temporário, não persistido
+  return true;
+ }
  const id=String(clientId||'').trim();
  if(!/^[\w-]+\.apps\.googleusercontent\.com$/.test(id))throw Error('ID OAuth inválido. Use o Client ID Web (não o Client Secret).');
  await loadGIS();
