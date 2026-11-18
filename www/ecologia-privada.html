@@ -69,6 +69,15 @@ body.native-android .study-question-panel{inset:0!important}
 .study-ai-download{font-size:12px;font-weight:750;color:#27774c;text-decoration:none}
 @media(max-width:600px){.study-ai-visual-actions button{flex:1 1 150px}.study-ai-generated{padding:7px}}
 
+/* O cabeçalho pode ganhar duas linhas no telefone sem cobrir o leitor. */
+body{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+header.reader-toolbar{flex:none;height:auto;min-height:55px}
+.reader{flex:1 1 auto;min-height:0;height:auto!important}
+#message.error{overflow-y:auto}
+@media(max-width:700px){
+ header.reader-toolbar{min-height:52px}
+ header.reader-toolbar .reader-toolbar-actions{flex:1;justify-content:flex-end}
+}
 /* Anotações de estudo sobre palavra/trecho, com editor e lista recolhíveis. */
 .study-note-toolbar{background:#eff7f0;color:#21683e;border:1px solid #cbe0d0;border-radius:9px;padding:8px 10px;white-space:nowrap;font-weight:700;font-size:12px;cursor:pointer}
 .study-note-selection{background:#28784b;color:#fff;border-color:#28784b}
