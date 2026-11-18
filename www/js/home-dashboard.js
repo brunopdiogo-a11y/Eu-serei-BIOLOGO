@@ -67,12 +67,16 @@ export function renderStudyDashboard(root,dots,info){
  }
  const studied=dates.filter(d=>d.minutes>0).length;
  c.append(chart,make('p','home-slide-note',studied+' de 7 dias com estudo registrado · '+Math.round(dates.reduce((n,d)=>n+d.minutes,0))+' minutos.'));
- const d=card('📈 Constância',plan?'Meta semanal':'Seu hábito');
- const target=plan?Math.max(1,Math.min(7,Number(plan.daysPerWeek)||4)):null;
- d.append(make('div','home-emphasis',target?studied+' / '+target+' dias':studied+' dias'));
- const strip=make('div','home-target-track'),fill=make('i');
- fill.style.width=clamp(studied/(target||7)*100)+'%';strip.append(fill);
- d.append(strip,make('p','home-slide-note',target?'Dias com estudo nos últimos 7 dias comparados à frequência escolhida.':'A frequência considera apenas sessões de estudo registradas.'));
+ const d=card('📅 Prazo restante',plan?'Meta da disciplina':'Planeje seus estudos');
+ if(plan?.end){
+  const day=iso=>new Date(iso+'T12:00:00');
+  const n=Math.round((Date.UTC(day(plan.end).getFullYear(),day(plan.end).getMonth(),day(plan.end).getDate())-Date.UTC(day(today).getFullYear(),day(today).getMonth(),day(today).getDate()))/86400000);
+  const left=Math.max(0,total-done);
+  const available=Math.max(0,n+1);
+  d.append(make('div','home-emphasis',n<0?'Prazo vencido':n===0?'Último dia':n+' dia(s)'));
+  d.append(make('p','home-slide-note',available?left+' '+(isStage?'etapas':'aulas')+' pendentes · cerca de '+Math.ceil(left/available)+' por dia, incluindo hoje.':'Atualize a data para continuar o planejamento.'));
+ }else d.append(make('p','home-slide-note','Defina uma data de conclusão para visualizar quantos dias faltam.'));
+
  root.replaceChildren(...cards);
  dots.replaceChildren(...cards.map((_,index)=>{
    const button=make('button','home-carousel-dot');button.type='button';
