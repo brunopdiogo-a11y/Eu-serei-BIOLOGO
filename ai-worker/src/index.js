@@ -78,56 +78,92 @@ function curatedStomatalImages(query){
     }
   ];
 }
+/* Busca visual em etapas: identifica o assunto e tenta português e inglês.
+ * A busca de imagens reais usa o Wikimedia Commons; não é indexação de toda a web.
+ * Mantemos título, autoria/licença e link da página original.
+ */
+function visualSearchTerms(query){
+  const text=safeText(query,180).toLocaleLowerCase("pt-BR")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  const clean=text.replace(/https?:\/\/\S+/g," ").replace(/[^a-z0-9\s-]/g," ")
+    .replace(/\b(crie|gere|gerar|fa[cç]a|mostre|mostrar|quero|preciso|procure|pesquise|busque|encontre|uma|um|umas|uns|para|sobre|com|por|favor|da|das|de|do|dos|em|na|nas|no|nos|como|que|sao|ser|imagem|imagens|ilustracao|ilustracoes|foto|fotos|esquema|infografico|diagrama|cientifica|cientifico|didatica|didatico|internet|aula|explicar|visual|comparacao|me|pode|plantas?\s+mostrando)\b/g," ")
+    .replace(/\s+/g," ").trim();
+  const terms=[];
+  const add=term=>{if(term&&!terms.includes(term))terms.push(term.slice(0,100));};
+  // Termos curtos e específicos oferecem resultados melhores no Commons.
+  if(/estomat|criptas?/.test(text)){add("stomata leaf microscope");add("estomatos folha");add("stomatal crypt Nerium oleander");}
+  if(/cuticula/.test(text)){add("plant leaf cuticle diagram");add("cuticula vegetal");}
+  if(/transpirac|perda de agua|economia de agua/.test(text)){add("plant transpiration diagram");add("transpiracao vegetal");}
+  if(/xerofit|cerrado|seca|arid|adaptac/.test(text)){add("xerophyte adaptations");add("cerrado plants");add("xerophytic leaf anatomy");}
+  if(/raiz|radicular/.test(text)){add("plant root anatomy");add("root system botanical illustration");}
+  if(/floresta|amazonia|vegetacao/.test(text)){add("tropical rainforest plants");add("amazon rainforest vegetation");}
+  if(/fotossint/.test(text)){add("photosynthesis diagram");add("fotossintese");}
+  if(/decidu|queda de folhas/.test(text)){add("deciduous tree leaves");add("deciduous plant");}
+  const words=clean.split(" ").filter(x=>x.length>=3);
+  if(words.length)add(words.slice(0,5).join(" "));
+  if(words.length>3)add(words.slice(-3).join(" "));
+  if(!terms.length)add(safeText(query,100));
+  return terms.slice(0,5);
+}
+function parseCommonsImages(data){
+  return (data.query?.pages||[]).filter(page=>page.ns===6).map(page=>{
+    const info=page.imageinfo?.[0]||{},thumb=info.thumburl||info.url||"",source=info.descriptionurl||"";
+    if(!thumb.startsWith("https://upload.wikimedia.org/")||
+       !source.startsWith("https://commons.wikimedia.org/")||
+       !/^image\/(png|jpeg|webp|gif)$/.test(info.mime||""))return null;
+    const metadata=info.extmetadata||{};
+    const plain=value=>String(value||"").replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim().slice(0,220);
+    return {
+      title:String(page.title||"").replace(/^File:/,"").replace(/\.[^.]+$/,"").slice(0,180),
+      thumbnail:thumb,source,
+      credit:plain(metadata.Artist?.value||metadata.Credit?.value||"Wikimedia Commons"),
+      license:plain(metadata.LicenseShortName?.value||"Consulte a licença na origem")
+    };
+  }).filter(Boolean);
+}
 async function searchScientificImages(query){
   const normalized=safeText(query,180);
-  if(!normalized)return [];
-  // A API nem sempre encontra arquivos com frases científicas longas;
-  // referências verificadas garantem material relevante para criptas.
-  const curated=curatedStomatalImages(normalized);
-  let terms=normalized.replace(/[?!.,;:]/g," ").replace(/\s+/g," ").trim();
-  if(/criptas?\s+estom[aá]tic|stomatal crypt/i.test(terms)){
-    terms="stomatal crypt Nerium oleander";
-  }
-  const params=new URLSearchParams({
-    action:"query",generator:"search",gsrsearch:terms,gsrnamespace:"6",
-    gsrlimit:"8",prop:"imageinfo",iiprop:"url|mime|extmetadata",
-    iiurlwidth:"800",format:"json",formatversion:"2"
-  });
-  let data;
-  try{
-    const response=await fetch("https://commons.wikimedia.org/w/api.php?"+params.toString(),{
-      headers:{
-        "Accept":"application/json",
-        "User-Agent":"EuSereiBiologoTutor/1.1 (https://github.com/brunopdiogo-a11y/Eu-serei-BIOLOGO; academic image search)",
-        "Api-User-Agent":"EuSereiBiologoTutor/1.1 (https://github.com/brunopdiogo-a11y/Eu-serei-BIOLOGO)"
-      }
+  if(!normalized)return {images:[],terms:[]};
+  const terms=visualSearchTerms(normalized);
+  const images=[],seen=new Set();
+  let failures=0,attempts=0;
+  for(const term of terms){
+    if(images.length>=6)break;
+    attempts++;
+    const params=new URLSearchParams({
+      action:"query",generator:"search",gsrsearch:term,gsrnamespace:"6",
+      gsrlimit:"12",prop:"imageinfo",iiprop:"url|mime|extmetadata",
+      iiurlwidth:"640",format:"json",formatversion:"2"
     });
-    if(!response.ok)throw Error("Consulta Wikimedia retornou "+response.status);
-    data=await response.json();
-  }catch(error){
-    if(curated.length)return curated;
-    throw error;
+    try{
+      const response=await fetch("https://commons.wikimedia.org/w/api.php?"+params,{
+        headers:{
+          "Accept":"application/json",
+          "User-Agent":"EuSereiBiologoTutor/1.2 (https://github.com/brunopdiogo-a11y/Eu-serei-BIOLOGO)",
+          "Api-User-Agent":"EuSereiBiologoTutor/1.2 (https://github.com/brunopdiogo-a11y/Eu-serei-BIOLOGO)"
+        }
+      });
+      if(!response.ok)throw Error("Commons HTTP "+response.status);
+      const found=parseCommonsImages(await response.json());
+      for(const item of found){
+        if(!seen.has(item.source)){seen.add(item.source);images.push(item);}
+        if(images.length>=6)break;
+      }
+    }catch{failures++;}
   }
-  const found=(data.query?.pages||[])
-    .filter(p=>p.ns===6)
-    .map(p=>{
-      const info=p.imageinfo?.[0]||{};
-      const src=info.thumburl||info.url||"";
-      const source=info.descriptionurl||"";
-      if(!src.startsWith("https://upload.wikimedia.org/")||
-         !source.startsWith("https://commons.wikimedia.org/")||
-         !/^image\/(png|jpeg|webp|gif)$/.test(info.mime||""))return null;
-      const metadata=info.extmetadata||{};
-      const plain=value=>String(value||"").replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim().slice(0,220);
-      return {
-        title:String(p.title||"").replace(/^File:/,"").replace(/\.[^.]+$/,"").slice(0,180),
-        thumbnail:src,source,
-        credit:plain(metadata.Artist?.value||metadata.Credit?.value||"Wikimedia Commons"),
-        license:plain(metadata.LicenseShortName?.value||"Consulte a licença na origem")
-      };
-    }).filter(Boolean).slice(0,4);
-  return curated.length?[...curated,...found].slice(0,4):found;
+  if(failures===attempts){
+    // Não inventar "nenhum resultado" quando a própria API não respondeu.
+    throw Error("Falha de comunicação com o acervo Wikimedia Commons.");
+  }
+  // Complemento específico, sem apresentar conteúdo gerado como fotografia.
+  if(images.length===0){
+    for(const item of curatedStomatalImages(normalized)){
+      if(!seen.has(item.source)){images.push(item);seen.add(item.source);}
+    }
+  }
+  return {images:images.slice(0,6),terms};
 }
+
 export default {
   async fetch(request,env){
     const origin=request.headers.get("Origin")||"";
@@ -179,12 +215,12 @@ export default {
     }
     if(pathname==="/images"){
       const query=safeText(data.query,180);
-      if(!query)return respond({error:"Informe um tema para localizar imagens científicas."},400,origin);
+      if(!query)return respond({error:"Informe um tema para pesquisar imagens reais."},400,origin);
       try{
-        const images=await searchScientificImages(query);
-        return respond({images,query,source:"Wikimedia Commons"},200,origin);
+        const result=await searchScientificImages(query);
+        return respond({...result,query,source:"Wikimedia Commons",scope:"commons-only"},200,origin);
       }catch{
-        return respond({error:"Não foi possível consultar o acervo de imagens neste momento."},502,origin);
+        return respond({error:"Não foi possível acessar o Wikimedia Commons agora. Isso não significa que não existam imagens do assunto."},502,origin);
       }
     }
     const question=safeText(data.question,1500);
