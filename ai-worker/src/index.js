@@ -152,6 +152,9 @@ async function searchScientificImages(query){
     }catch{failures++;}
   }
   if(failures===attempts){
+    // Referências previamente catalogadas para estômatos, caso o Commons esteja indisponível.
+    const curated=curatedStomatalImages(normalized);
+    if(curated.length)return {images:curated,terms};
     // Não inventar "nenhum resultado" quando a própria API não respondeu.
     throw Error("Falha de comunicação com o acervo Wikimedia Commons.");
   }
