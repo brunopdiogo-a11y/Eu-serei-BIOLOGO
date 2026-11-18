@@ -71,6 +71,7 @@ jobs:
           JAVA_DIR=android/app/src/main/java/br/com/eusereibiologo/app
           mkdir -p "$JAVA_DIR"
           cp android-native/StudySpeechPlugin.java "$JAVA_DIR/"
+          cp android-native/BackupExportPlugin.java "$JAVA_DIR/"
           cp android-native/AppHealthPlugin.java "$JAVA_DIR/"
           cp android-native/StudyDictationPlugin.java "$JAVA_DIR/"
           cp android-native/StudySpeechService.java "$JAVA_DIR/"
@@ -84,6 +85,9 @@ jobs:
           from pathlib import Path
           p=Path('android/app/src/main/java/br/com/eusereibiologo/app/MainActivity.java')
           s=p.read_text()
+          if 'registerPlugin(BackupExportPlugin.class)' not in s:
+              s=s.replace('registerPlugin(StudySpeechPlugin.class);','registerPlugin(StudySpeechPlugin.class);\n        registerPlugin(BackupExportPlugin.class);')
+              p.write_text(s)
           if 'registerPlugin(StudySpeechPlugin.class)' not in s:
               s=s.replace('super.onCreate(savedInstanceState);','registerPlugin(StudySpeechPlugin.class);\n        super.onCreate(savedInstanceState);')
               if 'registerPlugin(StudySpeechPlugin.class)' not in s:
