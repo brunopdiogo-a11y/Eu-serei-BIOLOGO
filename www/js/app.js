@@ -51,12 +51,13 @@ function remainingGoals(c,p){
 }
 function dailyTarget(c,p){
  const rem=remainingGoals(c,p),end=toDate(p.end),start=toDate(p.start),current=toDate(today());
- if(!end||!start||end<start)return {...rem,availableDays:0,lessonsPerDay:0,stagesPerDay:0,late:true};
- const remainingCalendar=Math.max(0,daysBetween(current,end)+1);
- const daysPerWeek=Math.max(1,Math.min(7,Number(p.daysPerWeek)||4));
- /* Estimativa proporcional; futuramente configuraremos os dias exatos da semana. */
- const availableDays=remainingCalendar?Math.max(1,Math.ceil(remainingCalendar*daysPerWeek/7)):0;
- return {...rem,availableDays,lessonsPerDay:availableDays?Math.ceil(rem.remainingLessons/availableDays):rem.remainingLessons,stagesPerDay:rem.remainingStages===null?null:availableDays?Math.ceil(rem.remainingStages/availableDays):rem.remainingStages,late:remainingCalendar===0};
+ if(!end||!start||end<start)return {...rem,availableDays:0,daysLeft:0,lessonsPerDay:0,stagesPerDay:0,late:true};
+ // Hoje conta como dia disponível; dias corridos sem ajuste por frequência semanal.
+ const availableDays=Math.max(0,daysBetween(current,end)+1);
+ return {...rem,availableDays,daysLeft:Math.max(0,daysBetween(current,end)),
+  lessonsPerDay:availableDays?Math.ceil(rem.remainingLessons/availableDays):rem.remainingLessons,
+  stagesPerDay:rem.remainingStages===null?null:availableDays?Math.ceil(rem.remainingStages/availableDays):rem.remainingStages,
+  late:availableDays===0};
 }
 
 function planSummary(c){
@@ -137,25 +138,24 @@ function fillPlan(){
  $('plan-start').value=p?.start||today();
  const defaultEnd=new Date();defaultEnd.setDate(defaultEnd.getDate()+29);
  $('plan-end').value=p?.end||localDate(defaultEnd);
- $('plan-days').value=String(p?.daysPerWeek||4);
  $('plan-minutes').value=p?.minutesPerSession||30;
  $('plan-lessons').value=p?.lessonGoal||course(id).lessons;
 }
 $('plan-course').addEventListener('change',fillPlan);
 $('plan-form').addEventListener('submit',e=>{
- e.preventDefault();const id=$('plan-course').value,start=$('plan-start').value,end=$('plan-end').value,days=Number($('plan-days').value),minutes=Number($('plan-minutes').value),goal=Number($('plan-lessons').value);
- if(!start||!end||end<start||days<1||days>7||!Number.isInteger(minutes)||minutes<5||minutes>240||!Number.isInteger(goal)||goal<1||goal>course(id).lessons){$('plan-feedback').textContent='Verifique as datas, minutos e meta (até '+course(id).lessons+' aulas).';return;}
- state.plans[id]={start,end,daysPerWeek:days,minutesPerSession:minutes,lessonGoal:goal,updatedAt:new Date().toISOString()};
+ e.preventDefault();const id=$('plan-course').value,start=$('plan-start').value,end=$('plan-end').value,minutes=Number($('plan-minutes').value),goal=Number($('plan-lessons').value);
+ if(!start||!end||end<start||!Number.isInteger(minutes)||minutes<5||minutes>240||!Number.isInteger(goal)||goal<1||goal>course(id).lessons){$('plan-feedback').textContent='Verifique as datas, minutos e meta (até '+course(id).lessons+' aulas).';return;}
+ state.plans[id]={start,end,minutesPerSession:minutes,lessonGoal:goal,updatedAt:new Date().toISOString()};
  save();$('plan-feedback').textContent='✅ Planejamento salvo para '+course(id).title+'.';notify('Planejamento salvo!');
 });
 function currentWeekStart(){const d=now();d.setDate(d.getDate()-((d.getDay()+6)%7));return localDate(d);}
 function renderPlan(){
  const plans=Object.keys(state.plans).length,week=studiedMinutes(null,currentWeekStart());
- const target=Object.values(state.plans).reduce((sum,p)=>sum+p.daysPerWeek*p.minutesPerSession,0);
+ const target=Object.values(state.plans).length;
  $('plan-summary').innerHTML='';
- [['📚 Disciplinas planejadas',String(plans)],['⏱️ Tempo nesta semana',fmtMin(week)],['🎯 Meta semanal',target?fmtMin(target):'—']].forEach(([name,val])=>{const el=document.createElement('div');el.className='metric';const s=document.createElement('small');s.textContent=name;const n=document.createElement('strong');n.textContent=val;el.append(s,n);$('plan-summary').append(el);});
+ [['📚 Disciplinas planejadas',String(plans)],['⏱️ Tempo nesta semana',fmtMin(week)],['📅 Planos com prazo definido',String(target)]].forEach(([name,val])=>{const el=document.createElement('div');el.className='metric';const s=document.createElement('small');s.textContent=name;const n=document.createElement('strong');n.textContent=val;el.append(s,n);$('plan-summary').append(el);});
  const list=$('plan-list');list.replaceChildren();
- courses.forEach(c=>{const p=state.plans[c.id],s=planSummary(c),row=document.createElement('div');row.className='plan-row';const top=document.createElement('div'),title=document.createElement('strong'),pill=document.createElement('span');title.textContent=c.icon+' '+c.title;pill.className='status-pill'+(s.kind==='urgent'?' danger':s.kind==='attention'?' warning':'');pill.textContent=s.label;top.append(title,pill);const para=document.createElement('p');para.textContent=p?'De '+formatDate(p.start)+' até '+formatDate(p.end)+' · '+p.daysPerWeek+' dias/semana · '+p.minutesPerSession+' min/sessão · '+fmtMin(studiedMinutes(c.id))+' registrados':'Sem meta definida. Selecione esta matéria no formulário acima.';row.append(top,para);if(p){const meter=document.createElement('div');meter.className='meter';const bar=document.createElement('i');bar.style.width=Math.min(100,(c.stagesPerLesson?remainingGoals(c,p).doneStages:completedLessonsFor(c))/(c.stagesPerLesson?remainingGoals(c,p).totalStages:p.lessonGoal)*100)+'%';meter.append(bar);row.append(meter);const daily=dailyTarget(c,p),dailyRow=document.createElement('p');dailyRow.style.fontWeight='700';dailyRow.style.color='#286d47';dailyRow.textContent=daily.late?(daily.remainingLessons||daily.remainingStages?'Prazo encerrado: revise a meta ou o prazo.':'Meta concluída!'):(daily.remainingStages!==null?'📖 Meta diária: '+daily.stagesPerDay+' etapa(s) ou aproximadamente '+daily.lessonsPerDay+' aula(s) em '+daily.availableDays+' dia(s) de estudo restantes.':'📖 Meta diária: aproximadamente '+daily.lessonsPerDay+' aula(s) em '+daily.availableDays+' dia(s) de estudo restantes.');row.append(dailyRow);}list.append(row);});
+ courses.forEach(c=>{const p=state.plans[c.id],s=planSummary(c),row=document.createElement('div');row.className='plan-row';const top=document.createElement('div'),title=document.createElement('strong'),pill=document.createElement('span');title.textContent=c.icon+' '+c.title;pill.className='status-pill'+(s.kind==='urgent'?' danger':s.kind==='attention'?' warning':'');pill.textContent=s.label;top.append(title,pill);const para=document.createElement('p');para.textContent=p?'De '+formatDate(p.start)+' até '+formatDate(p.end)+' · '+p.minutesPerSession+' min/sessão · '+fmtMin(studiedMinutes(c.id))+' registrados':'Sem meta definida. Selecione esta matéria no formulário acima.';row.append(top,para);if(p){const remaining=daysBetween(toDate(today()),toDate(p.end));const deadline=document.createElement('p');deadline.className='deadline-count';deadline.textContent=remaining<0?'⏰ Prazo vencido há '+Math.abs(remaining)+' dia(s)':remaining===0?'⏰ Último dia do prazo: hoje':'📅 Faltam '+remaining+' dia(s) para concluir';row.append(deadline);const meter=document.createElement('div');meter.className='meter';const bar=document.createElement('i');bar.style.width=Math.min(100,(c.stagesPerLesson?remainingGoals(c,p).doneStages:completedLessonsFor(c))/(c.stagesPerLesson?remainingGoals(c,p).totalStages:p.lessonGoal)*100)+'%';meter.append(bar);row.append(meter);const daily=dailyTarget(c,p),dailyRow=document.createElement('p');dailyRow.style.fontWeight='700';dailyRow.style.color='#286d47';dailyRow.textContent=daily.late?(daily.remainingLessons||daily.remainingStages?'Prazo encerrado: revise a meta ou o prazo.':'Meta concluída!'):(daily.remainingStages!==null?'📖 '+daily.availableDays+' dia(s) disponíveis (incluindo hoje) · meta: '+daily.stagesPerDay+' etapa(s)/dia, aproximadamente '+daily.lessonsPerDay+' aula(s)/dia.':'📖 '+daily.availableDays+' dia(s) disponíveis (incluindo hoje) · meta: '+daily.lessonsPerDay+' aula(s)/dia.');row.append(dailyRow);}list.append(row);});
  const sess=$('sessions-list');sess.replaceChildren();if(!state.sessions.length){const p=document.createElement('p');p.className='muted';p.textContent='Nenhuma sessão registrada ainda.';sess.append(p);}
  state.sessions.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,10).forEach(s=>{const row=document.createElement('div');row.className='session-row';const left=document.createElement('span');left.textContent=course(s.courseId).title+' · '+({reading:'Leitura',questions:'Questões',review:'Revisão'}[s.type]||'Estudo');const right=document.createElement('small');right.textContent=fmtMin(s.minutes)+' · '+formatDate(s.date);row.append(left,right);sess.append(row);});
  $('inapp-alerts').checked=state.preferences.inAppAlerts;
