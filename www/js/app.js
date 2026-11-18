@@ -179,7 +179,35 @@ $('manual-date').value=today();
 $('manual-form').addEventListener('submit',e=>{e.preventDefault();const m=Number($('manual-minutes').value),d=$('manual-date').value;if(!d||!Number.isInteger(m)||m<1||m>720){notify('Informe data e tempo válidos.');return;}addSession($('session-course').value,$('session-type').value,m,d);$('manual-minutes').value='';notify('Sessão adicionada ao histórico.');});
 $('inapp-alerts').addEventListener('change',e=>{state.preferences.inAppAlerts=e.target.checked;save();});
 // As cobranças são globais e não fazem parte dos planos por disciplina.
-$('export').addEventListener('click',()=>{const blob=new Blob([exportState()],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='EU_SEREI_BIOLOGO_backup_'+today()+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),2000);$('backup-status').textContent='Arquivo preparado para download.';});
+// Exportação: no APK, o seletor nativo confirma que o arquivo foi realmente salvo.
+function fullBackup(){
+ const ecologyKey='ecologia-vegetal-estudos-v1';
+ const ecologyRaw=localStorage.getItem(ecologyKey);
+ let ecology=null;
+ if(ecologyRaw!==null){try{ecology=JSON.parse(ecologyRaw);}catch{throw Error('Dados de Ecologia Vegetal inválidos; exportação interrompida para evitar backup incompleto.');}}
+ return JSON.stringify({backupFormat:'eu-serei-biologo-completo-v2',createdAt:new Date().toISOString(),state:readState(),ecologyProgress:ecology,ecologyPresent:ecologyRaw!==null},null,2);
+}
+$('export').addEventListener('click',async()=>{
+ const status=$('backup-status'),button=$('export');
+ button.disabled=true;
+ try{
+  const content=fullBackup(),filename='EU_SEREI_BIOLOGO_backup_'+today()+'.json';
+  const native=!!(window.Capacitor?.isNativePlatform?.()&&window.Capacitor.getPlatform?.()==='android');
+  if(native){
+   const backupPlugin=window.Capacitor.registerPlugin('BackupExport');
+   const result=await backupPlugin.save({filename,content});
+   if(!result?.saved)throw Error('O Android não confirmou o salvamento.');
+   status.textContent='✅ Backup salvo no local escolhido. Agora envie o arquivo JSON aqui na conversa.';
+  }else{
+   const blob=new Blob([content],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');
+   link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();
+   setTimeout(()=>URL.revokeObjectURL(url),30000);
+   status.textContent='Download solicitado ao navegador. Confira a pasta Downloads.';
+  }
+ }catch(err){
+  status.textContent=err?.message==='cancelled'?'Salvamento cancelado; nenhum dado foi apagado.':'⚠️ Backup não salvo: '+(err?.message||String(err))+'. Seus dados continuam no aplicativo.';
+ }finally{button.disabled=false;}
+});
 $('import').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{const text=await f.text();state=importState(text);render();fillPlan();$('backup-status').textContent='Backup restaurado com sucesso.';}catch(err){$('backup-status').textContent='Erro no backup: '+err.message;}e.target.value='';});
 
 /* Google Drive: conexão explícita, nenhuma credencial secreta armazenada. */
