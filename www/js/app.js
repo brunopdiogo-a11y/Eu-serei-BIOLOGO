@@ -180,12 +180,26 @@ $('manual-form').addEventListener('submit',e=>{e.preventDefault();const m=Number
 $('inapp-alerts').addEventListener('change',e=>{state.preferences.inAppAlerts=e.target.checked;save();});
 // As cobranças são globais e não fazem parte dos planos por disciplina.
 // Exportação: no APK, o seletor nativo confirma que o arquivo foi realmente salvo.
+const courseProgressPrefix='eu-serei-biologo-course-progress:';
+function localCourseProgress(){
+ const result={};
+ for(let i=0;i<localStorage.length;i++){
+  const key=localStorage.key(i);
+  if(!key?.startsWith(courseProgressPrefix))continue;
+  const id=key.slice(courseProgressPrefix.length);
+  if(!/^[a-z0-9][a-z0-9-]{0,79}$/.test(id))continue;
+  const parsed=JSON.parse(localStorage.getItem(key));
+  if(!isRecord(parsed))throw Error('Progresso inválido: '+id);
+  result[id]=parsed;
+ }
+ return result;
+}
 function fullBackup(){
  const ecologyKey='ecologia-vegetal-estudos-v1';
  const ecologyRaw=localStorage.getItem(ecologyKey);
  let ecology=null;
  if(ecologyRaw!==null){try{ecology=JSON.parse(ecologyRaw);}catch{throw Error('Dados de Ecologia Vegetal inválidos; exportação interrompida para evitar backup incompleto.');}}
- return JSON.stringify({backupFormat:'eu-serei-biologo-completo-v2',createdAt:new Date().toISOString(),state:readState(),ecologyProgress:ecology,ecologyPresent:ecologyRaw!==null},null,2);
+ return JSON.stringify({backupFormat:'eu-serei-biologo-completo-v2',createdAt:new Date().toISOString(),state:readState(),ecologyProgress:ecology,ecologyPresent:ecologyRaw!==null,courseProgress:localCourseProgress()},null,2);
 }
 $('export').addEventListener('click',async()=>{
  const status=$('backup-status'),button=$('export');
@@ -275,6 +289,7 @@ $('import').addEventListener('change',async e=>{
   const incoming=complete?raw.state:raw;
   if(!isRecord(incoming)||incoming.schemaVersion!==1||!isRecord(incoming.completed)||!Array.isArray(incoming.sessions)||!Array.isArray(incoming.answers)||!isRecord(incoming.plans))throw Error('Formato de backup incompatível.');
   if(complete&&raw.ecologyPresent&&(!isRecord(raw.ecologyProgress)||!isRecord(raw.ecologyProgress.complete)))throw Error('Progresso de Ecologia Vegetal inválido.');
+  if(complete&&raw.courseProgress!==undefined&&!isRecord(raw.courseProgress))throw Error('Progresso de novas disciplinas inválido.');
   const ecologyKey='ecologia-vegetal-estudos-v1';
   const ecologyRaw=localStorage.getItem(ecologyKey);
   let previousEcology={};
@@ -282,15 +297,30 @@ $('import').addEventListener('change',async e=>{
    previousEcology=JSON.parse(ecologyRaw);
    if(!isRecord(previousEcology))throw Error('Dados locais de Ecologia inválidos; nada foi importado.');
   }
+  const previousCourses=localCourseProgress();
+  const combinedCourses={...previousCourses};
+  if(complete){
+   for(const [id,value] of Object.entries(raw.courseProgress||{})){
+    if(!/^[a-z0-9][a-z0-9-]{0,79}$/.test(id)||!isRecord(value))throw Error('Progresso inválido da disciplina '+id);
+    const old=previousCourses[id]||{};
+    const mergedCourse={...old,...value};
+    for(const field of ['complete','completed']){
+     if(isRecord(old[field])||isRecord(value[field]))mergedCourse[field]={...(isRecord(old[field])?old[field]:{}),...(isRecord(value[field])?value[field]:{})};
+    }
+    combinedCourses[id]=mergedCourse;
+   }
+  }
   const previous=readState();
   const merged=mergeStudyState(previous,incoming);
   const ecology=complete&&raw.ecologyPresent?mergeEcology(previousEcology,raw.ecologyProgress):null;
   // Preservar retrato integral antes de escrever; não apagar a fonte em caso de falha.
   const safetyKey='eu-serei-biologo-before-import-'+Date.now();
-  localStorage.setItem(safetyKey,JSON.stringify({state:previous,ecologyProgress:previousEcology,ecologyPresent:ecologyRaw!==null}));
+  localStorage.setItem(safetyKey,JSON.stringify({state:previous,ecologyProgress:previousEcology,ecologyPresent:ecologyRaw!==null,courseProgress:previousCourses}));
   if(ecology!==null)localStorage.setItem(ecologyKey,JSON.stringify(ecology));
+  for(const [id,progress] of Object.entries(combinedCourses))localStorage.setItem(courseProgressPrefix+id,JSON.stringify(progress));
   try{state=writeState(merged);}catch(error){
    if(ecologyRaw===null)localStorage.removeItem(ecologyKey);else localStorage.setItem(ecologyKey,ecologyRaw);
+   for(const id of Object.keys(combinedCourses))if(!Object.hasOwn(previousCourses,id))localStorage.removeItem(courseProgressPrefix+id);else localStorage.setItem(courseProgressPrefix+id,JSON.stringify(previousCourses[id]));
    throw error;
   }
   render();fillPlan();
@@ -362,7 +392,7 @@ window.addEventListener('online',()=>scheduleCloudSync(1200));
 window.addEventListener('focus',()=>scheduleCloudSync(1200));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)scheduleCloudSync(1200);});
 window.addEventListener('storage',event=>{
- if(event.key==='estudos:v1'||event.key==='ecologia-vegetal-estudos-v1')scheduleCloudSync(2500);
+ if(event.key==='estudos:v1'||event.key==='ecologia-vegetal-estudos-v1'||event.key?.startsWith(courseProgressPrefix))scheduleCloudSync(2500);
 });
 // Verificação periódica ajuda a captar gravações feitas na página de leitura.
 setInterval(()=>{if(!document.hidden)scheduleCloudSync(60000);},90000);
