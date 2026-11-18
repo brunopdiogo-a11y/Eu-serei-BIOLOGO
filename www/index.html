@@ -51,7 +51,7 @@
         <label>Disciplina<select id="plan-course" required></select></label>
         <label>Data de início<input id="plan-start" type="date" required></label>
         <label>Prazo para conclusão<input id="plan-end" type="date" required></label>
-        <label>Dias por semana<select id="plan-days"><option value="2">2 dias</option><option value="3">3 dias</option><option value="4">4 dias</option><option value="5">5 dias</option><option value="6">6 dias</option><option value="7">7 dias</option></select></label>
+        
         <label>Minutos por sessão<input id="plan-minutes" type="number" min="5" max="240" step="5" value="30" required></label>
         <label>Meta de aulas<input id="plan-lessons" type="number" min="1" max="100" value="6" required></label>
         <button type="submit" class="btn primary full-line">Salvar planejamento</button>
@@ -72,7 +72,7 @@
       </details>
     </section>
   </div>
-  <section class="card"><div class="section-header compact"><div><h2>🗓️ Visão das disciplinas</h2><p class="muted">O ritmo esperado é uma estimativa, não uma cobrança.</p></div></div><div id="plan-list"></div></section>
+  <section class="card"><div class="section-header compact"><div><h2>🗓️ Visão das disciplinas</h2><p class="muted">Dias restantes e metas diárias calculados pelo prazo definido em cada disciplina.</p></div></div><div id="plan-list"></div></section>
 
   <section class="card"><h2>🕘 Sessões recentes</h2><div id="sessions-list"></div></section>
 </section>
