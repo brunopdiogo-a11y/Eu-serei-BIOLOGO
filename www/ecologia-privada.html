@@ -68,8 +68,51 @@ body.native-android .study-question-panel{inset:0!important}
 .study-ai-generated small{font-size:11px;line-height:1.5;color:#637b68}
 .study-ai-download{font-size:12px;font-weight:750;color:#27774c;text-decoration:none}
 @media(max-width:600px){.study-ai-visual-actions button{flex:1 1 150px}.study-ai-generated{padding:7px}}
+
+/* Anotações de estudo sobre palavra/trecho, com editor e lista recolhíveis. */
+.study-note-toolbar{background:#eff7f0;color:#21683e;border:1px solid #cbe0d0;border-radius:9px;padding:8px 10px;white-space:nowrap;font-weight:700;font-size:12px;cursor:pointer}
+.study-note-selection{background:#28784b;color:#fff;border-color:#28784b}
+.study-note-toolbar[hidden],.study-notes-panel[hidden],.study-note-editor[hidden]{display:none!important}
+.study-note-toolbar:hover{filter:brightness(.96)}
+.study-notes-panel{position:fixed;z-index:999997;right:12px;top:64px;bottom:12px;width:min(440px,calc(100vw - 24px));background:#fff;border:1px solid #d5e4d9;box-shadow:0 12px 44px #142b1a35;border-radius:14px;padding:17px;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:12px}
+.study-notes-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.study-notes-heading strong{display:block;color:#235c3d;font-size:17px}
+.study-notes-heading small{display:block;font-size:11px;margin-top:3px}
+.study-notes-heading button{border:0;background:#edf5ed;border-radius:9px;min-width:38px;min-height:38px;cursor:pointer}
+.study-note-editor{display:grid;gap:8px;border:1px solid #d9e6dc;padding:12px;border-radius:11px;background:#f7fbf8}
+.study-note-editor label{font-size:12px;font-weight:750;color:#3c704d}
+.study-note-editor blockquote,.study-note-item blockquote{border-left:3px solid #93c4a1;padding:7px 10px;margin:0;background:#edf6ef;color:#55715c;font-size:12px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.study-note-editor textarea{width:100%;resize:vertical;min-height:110px;border:1px solid #cfded2;border-radius:9px;padding:11px;font:13px/1.6 system-ui}
+.study-note-buttons,.study-note-item-actions{display:flex;gap:8px;flex-wrap:wrap}
+.study-note-buttons button,.study-note-item-actions button{border:1px solid #c7ddcd;border-radius:9px;padding:9px 12px;background:#edf5ef;color:#2a6945;font-weight:700;cursor:pointer}
+.study-note-buttons button:first-child{background:#24754a;color:#fff}
+.study-notes-list{display:grid;gap:10px}
+.study-note-item{padding:12px;background:#fff;border:1px solid #e0eae1;border-radius:11px;display:grid;gap:9px;overflow-wrap:anywhere}
+.study-note-item>strong{font-size:12px;color:#296d46}
+.study-note-item>p{font-size:13px;line-height:1.55;white-space:pre-wrap;margin:0;color:#354b3b}
+.study-note-item-actions button{font-size:11px;padding:7px 9px}
+#study-notes-status{font-size:12px;color:#33764d;margin:0;line-height:1.45}
+.study-note-privacy,.study-note-empty{font-size:11px;color:#718475;line-height:1.5}
+@media(max-width:700px){
+ .reader-toolbar{flex-wrap:wrap}
+ .reader-toolbar-actions{flex-wrap:wrap;justify-content:flex-end}
+ .study-note-toolbar{padding:7px 8px;font-size:11px}
+ .study-notes-panel{top:max(80px,calc(env(safe-area-inset-top,0px) + 65px));bottom:8px}
+}
 </style></head><body>
-<header class="reader-toolbar"><a href="./index.html" class="reader-brand">← EU SEREI BIOLOGO</a><div class="reader-toolbar-actions"><button type="button" id="reading-chapters" class="quiet-control">📚 Estudos</button><span class="speech-header-actions"><button type="button" id="voice-toggle" class="quiet-control" aria-label="Ouvir o parágrafo selecionado">🔊 Ouvir</button><button type="button" id="voice-settings-toggle" class="quiet-control speech-settings" aria-expanded="false" aria-controls="voice-panel" aria-label="Configurações da narração" title="Configurações da narração">⚙</button></span><button class="lesson-plan-button" id="lesson-plan-toggle" aria-expanded="false">📅 Cronograma</button></div></header><aside id="lesson-plan-panel" class="lesson-plan-panel" hidden><div id="lesson-plan-summary"></div></aside>
+<header class="reader-toolbar"><a href="./index.html" class="reader-brand">← EU SEREI BIOLOGO</a><div class="reader-toolbar-actions"><button type="button" id="reading-chapters" class="quiet-control">📚 Estudos</button><span class="speech-header-actions"><button type="button" id="voice-toggle" class="quiet-control" aria-label="Ouvir o parágrafo selecionado">🔊 Ouvir</button><button type="button" id="voice-settings-toggle" class="quiet-control speech-settings" aria-expanded="false" aria-controls="voice-panel" aria-label="Configurações da narração" title="Configurações da narração">⚙</button></span><button type="button" id="study-note-selection" class="study-note-toolbar study-note-selection" hidden>✎ Anotar seleção</button><button type="button" id="study-note-list" class="study-note-toolbar">📝 Anotações</button><button class="lesson-plan-button" id="lesson-plan-toggle" aria-expanded="false">📅 Cronograma</button></div></header><aside id="lesson-plan-panel" class="lesson-plan-panel" hidden><div id="lesson-plan-summary"></div></aside>
+<section id="study-notes-panel" class="study-notes-panel" role="dialog" aria-label="Minhas anotações de Ecologia Vegetal" aria-hidden="true" hidden>
+  <div class="study-notes-heading"><div><strong>📝 Minhas anotações</strong><small id="study-notes-count">Nenhuma anotação</small></div><button type="button" id="study-notes-close" aria-label="Fechar anotações">✕</button></div>
+  <div id="study-note-editor" class="study-note-editor" hidden>
+    <label>Trecho selecionado</label><blockquote id="study-note-excerpt"></blockquote>
+    <label for="study-note-body">Sua anotação</label>
+    <textarea id="study-note-body" rows="5" maxlength="5000" placeholder="Registre sua explicação, dúvida, exemplo ou associação para revisar depois."></textarea>
+    <div class="study-note-buttons"><button type="button" id="study-note-save">Salvar anotação</button><button type="button" id="study-note-cancel">Cancelar</button></div>
+  </div>
+  <p id="study-notes-status" role="status"></p>
+  <div id="study-notes-list" class="study-notes-list"></div>
+  <p class="study-note-privacy">As notas ficam neste dispositivo e participam do backup e da sincronização Google Drive quando autorizada.</p>
+</section>
 <div id="message" class="error">Abrindo material privado…</div>
 <iframe id="reader" class="reader hide" title="Aulas e atividades de Ecologia Vegetal" referrerpolicy="no-referrer"></iframe>
 <div class="clock hide collapsed" id="clock" aria-label="Cronômetro de estudo"><button type="button" class="clock-summary" id="clock-summary" aria-expanded="false" aria-controls="clock-actions"><span aria-hidden="true">⏱️</span><strong id="elapsed">00:00:00</strong><span class="clock-chevron" aria-hidden="true">⌃</span></button><span class="clock-reading-reminder" id="clock-reading-reminder" hidden>⚠️ Cronômetro pausado · estudando?</span><div class="clock-actions" id="clock-actions"><small id="clock-status">Pausado</small><div class="clock-actions-buttons"><button id="toggle">▶ Iniciar</button><button class="secondary" id="close-session">Salvar e sair</button></div><label class="background-option"><input id="background-study" type="checkbox"> ⏱️ Manter o cronômetro com a tela apagada</label><small class="background-note">Ative somente se continuar estudando ou ouvindo a aula. O tempo é salvo ao retornar; fechar a página encerra a sessão.</small></div></div>
@@ -144,6 +187,7 @@ import {initStageSpeech} from './js/voice-reader.js';
 import {bindLessonPlanning} from './js/lesson-planning.js';
 import {initReadingLayout} from './js/reading-layout.js';
 import {initStudyQuestions} from './js/study-questions.js';
+import {initStudyNotes} from './js/study-notes.js';
 if(window.Capacitor?.isNativePlatform?.()&&window.Capacitor?.getPlatform?.()==='android')document.body.classList.add('native-android');
 const storageKey='estudos:v1';
 let running=false,last=0,pendingMs=0,shownMs=0,ticker;
@@ -245,7 +289,7 @@ window.addEventListener('pagehide',pause);
 try{
  const entry=await readEcologia();if(!entry)throw Error('Material não encontrado. Volte à biblioteca e importe o HTML completo de Ecologia Vegetal.');
  // Documento escolhido pelo usuário, não publicado no GitHub.
- const frame=$('reader');watchReaderActivity(frame);initStudyQuestions(frame);initStageSpeech(frame,$('voice-panel'));bindLessonPlanning(frame);initReadingLayout(frame);frame.srcdoc=entry.html;frame.classList.remove('hide');$('clock').classList.remove('hide');$('message').remove();display();
+ const frame=$('reader');watchReaderActivity(frame);initStudyQuestions(frame);initStudyNotes(frame);initStageSpeech(frame,$('voice-panel'));bindLessonPlanning(frame);initReadingLayout(frame);frame.srcdoc=entry.html;frame.classList.remove('hide');$('clock').classList.remove('hide');$('message').remove();display();
  // O estudante inicia a contagem manualmente no botão Iniciar.
  // Ao ocultar, fechar a aba ou sair da página, a sessão é pausada e registrada.
 }catch(err){$('message').textContent='Não foi possível abrir: '+err.message;}
