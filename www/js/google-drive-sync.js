@@ -33,6 +33,18 @@ function readCourseProgress(){
  }
  return progress;
 }
+function mergeNotes(local,remote){
+ const merged=new Map();
+ for(const note of [...(Array.isArray(remote)?remote:[]),...(Array.isArray(local)?local:[])]){
+  if(!isRecord(note)||typeof note.id!=='string'||!note.id)continue;
+  const existing=merged.get(note.id);
+  // Mantém revisões e exclusões mais recentes, com tombstones para sincronização.
+  if(!existing||timestamp(note.updatedAt||note.deletedAt||note.createdAt)>=timestamp(existing.updatedAt||existing.deletedAt||existing.createdAt)){
+   merged.set(note.id,note);
+  }
+ }
+ return [...merged.values()];
+}
 function mergeCourseProgress(local,remote){
  const result={};
  for(const id of new Set([...Object.keys(remote||{}),...Object.keys(local||{})])){
@@ -47,6 +59,8 @@ function mergeCourseProgress(local,remote){
      if(when&&!complete[stage]||timestamp(when)>timestamp(complete[stage]))complete[stage]=when;
     }
     merged[key]=complete;
+   }else if(key==='notes'){
+    merged[key]=mergeNotes(left?.[key],right?.[key]);
    }else if(['answers','sessions','examHistory','reviewQueue'].includes(key)){
     merged[key]=mergeUnique(right?.[key],left?.[key]);
    }else if(newer&&key in newer)merged[key]=newer[key];
