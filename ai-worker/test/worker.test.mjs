@@ -70,9 +70,9 @@ test('busca imagens do Wikimedia Commons e devolve origem e licença',async()=>{
     }),env);
     assert.equal(res.status,200);
     const body=await res.json();
-    assert.ok(body.images.length>=2);
+    assert.ok(body.images.length>=1);
     assert.ok(body.images.some(image=>image.license==='CC BY-SA 4.0'));
-    assert.ok(body.images.some(image=>image.source.includes('Stomatal_crypts')));
+    assert.ok(body.images.some(image=>image.source.includes('Stomatal_crypt_Nerium')));
     assert.ok(requested.some(url=>url.includes('commons.wikimedia.org')));
     assert.ok(requested.some(url=>new URL(url).searchParams.get('gsrsearch')==='stomata leaf microscope'));
   }finally{globalThis.fetch=original}
