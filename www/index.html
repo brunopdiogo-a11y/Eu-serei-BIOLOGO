@@ -32,7 +32,11 @@
     <p>Acompanhe seu progresso e mantenha seu ritmo de aprendizagem.</p>
   </div>
   <div class="section-header home-dashboard-heading"><h2>📊 Seu painel de estudos</h2><span class="home-swipe-hint">Deslize para explorar <span aria-hidden="true">→</span></span></div>
-  <div class="home-carousel" id="home-dashboard" aria-label="Indicadores do planejamento, deslize horizontalmente" tabindex="0"></div>
+  <div class="home-carousel-shell">
+    <button type="button" class="home-carousel-arrow home-carousel-prev" id="home-carousel-prev" aria-label="Ver cartões anteriores" aria-controls="home-dashboard" hidden>‹</button>
+    <div class="home-carousel" id="home-dashboard" aria-label="Indicadores do planejamento, navegue horizontalmente" tabindex="0"></div>
+    <button type="button" class="home-carousel-arrow home-carousel-next" id="home-carousel-next" aria-label="Ver próximos cartões" aria-controls="home-dashboard" hidden>›</button>
+  </div>
   <div class="home-carousel-dots" id="home-dashboard-dots" aria-label="Indicador do card atual"></div>
   <div class="section-header"><h2>🔔 Para você hoje</h2></div>
   <div id="home-alerts" class="notice-list"></div>
