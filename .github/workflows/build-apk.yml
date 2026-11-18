@@ -85,9 +85,6 @@ jobs:
           from pathlib import Path
           p=Path('android/app/src/main/java/br/com/eusereibiologo/app/MainActivity.java')
           s=p.read_text()
-          if 'registerPlugin(BackupExportPlugin.class)' not in s:
-              s=s.replace('registerPlugin(StudySpeechPlugin.class);','registerPlugin(StudySpeechPlugin.class);\n        registerPlugin(BackupExportPlugin.class);')
-              p.write_text(s)
           if 'registerPlugin(StudySpeechPlugin.class)' not in s:
               s=s.replace('super.onCreate(savedInstanceState);','registerPlugin(StudySpeechPlugin.class);\n        super.onCreate(savedInstanceState);')
               if 'registerPlugin(StudySpeechPlugin.class)' not in s:
@@ -105,6 +102,14 @@ jobs:
           if 'registerPlugin(StudyControlsPlugin.class)' not in s:
               s=s.replace('registerPlugin(StudyAlarmPlugin.class);','registerPlugin(StudyAlarmPlugin.class);\n        registerPlugin(StudyControlsPlugin.class);')
               p.write_text(s)
+          # Registrar o backup somente depois de criar o onCreate e inserir os demais plugins.
+          s=p.read_text()
+          if 'registerPlugin(BackupExportPlugin.class)' not in s:
+              anchor='registerPlugin(StudySpeechPlugin.class);'
+              assert anchor in s, 'Registro do StudySpeech ausente'
+              s=s.replace(anchor,anchor+'\n        registerPlugin(BackupExportPlugin.class);',1)
+              p.write_text(s)
+          assert 'registerPlugin(BackupExportPlugin.class)' in p.read_text(), 'BackupExport não registrado'
           assert 'registerPlugin(StudyControlsPlugin.class)' in p.read_text()
           assert 'registerPlugin(StudyAlarmPlugin.class)' in p.read_text()
           assert 'registerPlugin(AppHealthPlugin.class)' in p.read_text()
