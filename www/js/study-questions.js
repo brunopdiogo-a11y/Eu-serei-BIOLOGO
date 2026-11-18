@@ -155,6 +155,48 @@ export function initStudyQuestions(frame){
     }catch(e){notice('⚠️ '+(e.message||e),true)}
     finally{msg.imageLoading=false;renderMessages()}
   }
+  async function generateIllustration(msg){
+    if(msg.generating)return;
+    let cfg;
+    try{cfg=saveConnection()}catch(error){showConfig(true);notice(error.message,true);return}
+    const idx=messages.indexOf(msg);
+    const preceding=messages.slice(0,idx).reverse().find(x=>x.role==='user');
+    const topic=(msg.imageTopic||preceding?.content||stage()).slice(0,500);
+    msg.generating=true;renderMessages();
+    notice('🎨 Gerando ilustração didática com IA…');
+    try{
+      const response=await fetchWithTimeout(cfg.endpoint+'/generate-image',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.token},
+        body:JSON.stringify({topic,excerpt:preceding?.excerpt||'',stage:stage()})
+      },90000);
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok)throw Error(result.error||'Falha ao gerar imagem.');
+      if(typeof result.image!=='string'||!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(result.image)||result.image.length>12000000)throw Error('Imagem retornada em formato inesperado.');
+      msg.generatedIllustration=result.image;
+      msg.generatedTopic=topic;
+      notice('✅ Ilustração gerada. Confira os detalhes científicos antes de usá-la como referência.');
+    }catch(error){notice('⚠️ '+(error?.message||String(error)),true)}
+    finally{msg.generating=false;renderMessages()}
+  }
+  function renderGeneratedIllustration(bubble,msg){
+    if(!msg.generatedIllustration&&!msg.generating)return;
+    const section=document.createElement('div');section.className='study-ai-generated';
+    if(msg.generating){
+      section.textContent='🎨 Criando uma ilustração didática…';
+    }else{
+      const image=document.createElement('img');
+      image.src=msg.generatedIllustration;image.alt='Ilustração didática gerada por IA: '+(msg.generatedTopic||'Biologia');
+      image.loading='lazy';image.decoding='async';
+      const label=document.createElement('small');
+      label.textContent='Imagem gerada por IA · representação didática, não fotografia científica. Verifique os detalhes anatômicos.';
+      const save=document.createElement('a');
+      save.href=msg.generatedIllustration;save.download='EU_SEREI_BIOLOGO_ilustracao.jpg';
+      save.textContent='⬇ Salvar ilustração';save.className='study-ai-download';
+      section.append(image,label,save);
+    }
+    bubble.append(section);
+  }
   function renderMessages(){
     thread.replaceChildren();
     EMPTY.hidden=messages.length>0;
@@ -175,19 +217,29 @@ export function initStudyQuestions(frame){
       bubble.append(body);
       if(msg.role==='assistant'){
         renderImages(bubble,msg);
+        renderGeneratedIllustration(bubble,msg);
+        const visualActions=document.createElement('div');
+        visualActions.className='study-ai-visual-actions';
+        const generateButton=document.createElement('button');
+        generateButton.type='button';generateButton.className='study-ai-image-button';
+        generateButton.textContent=msg.generating?'🎨 Gerando…':msg.generatedIllustration?'🎨 Gerar outra ilustração':'🎨 Gerar ilustração';
+        generateButton.disabled=!!msg.generating;
+        generateButton.addEventListener('click',()=>void generateIllustration(msg));
+        visualActions.append(generateButton);
         const imageButton=document.createElement('button');
         imageButton.type='button';imageButton.className='study-ai-image-button';
-        imageButton.textContent=msg.imageLoading?'⌛ Buscando imagens…':msg.imagesLoaded?'🖼 Atualizar imagens':'🖼 Ver imagens científicas';
+        imageButton.textContent=msg.imageLoading?'⌛ Buscando imagens…':msg.imagesLoaded?'🖼 Atualizar imagens reais':'🖼 Ver imagens reais';
         imageButton.disabled=!!msg.imageLoading;
         imageButton.addEventListener('click',()=>void requestImages(msg));
-        bubble.append(imageButton);
+        visualActions.append(imageButton);
+        bubble.append(visualActions);
       }
       thread.append(bubble);
     }
     requestAnimationFrame(()=>{thread.scrollTop=thread.scrollHeight});
   }
   function persistConversation(){
-    remember(STORAGE_CONVERSATION,JSON.stringify(messages.slice(-16)),sessionStorage);
+    remember(STORAGE_CONVERSATION,JSON.stringify(messages.slice(-16).map(({generatedIllustration,generatedTopic,generating,...rest})=>rest)),sessionStorage);
   }
   function open(){
     const excerpt=getSelection();
@@ -312,7 +364,7 @@ export function initStudyQuestions(frame){
       const imageIntent=/imagem|imagens|ilustra|figura|foto|micrografia|mostr[ea]/i.test(next.text);
       const imageTopic=/criptas?\s+estom[aá]tic|est[oô]mato/i.test(next.text+' '+next.excerpt)
         ?'stomatal crypt Nerium oleander':next.text.slice(0,160);
-      const answerMessage={role:'assistant',content:body.answer.trim(),imageQuery:imageTopic};
+      const answerMessage={role:'assistant',content:body.answer.trim(),imageQuery:imageTopic,imageTopic:next.text.slice(0,500)};
       messages.push(answerMessage);
       messages=messages.slice(-16);
       persistConversation();renderMessages();
