@@ -121,3 +121,6 @@ input,select,textarea{max-width:100%}
 @media(max-width:650px){
  .home-carousel-arrow{display:none!important}
 }
+
+/* Android OAuth usa a conta nativa: o campo de Client ID Web deve ficar realmente oculto. */
+.field[hidden],#google-oauth-web-help[hidden],#google-oauth-android-help[hidden]{display:none!important}
