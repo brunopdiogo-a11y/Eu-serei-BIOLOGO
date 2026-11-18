@@ -103,3 +103,21 @@ input,select,textarea{max-width:100%}
  .bottom-nav{padding-bottom:env(safe-area-inset-bottom,4px)}
  .home-slide{min-height:180px}
 }
+
+/* Setas contextuais do carrossel: aparecem somente no lado com cartões disponíveis. */
+.home-carousel-shell{position:relative;min-width:0}
+.home-carousel-arrow{
+ position:absolute;z-index:5;top:50%;transform:translateY(-50%);
+ width:42px;height:56px;border:1px solid #cfdfd2;border-radius:13px;
+ background:rgba(255,255,255,.96);box-shadow:0 6px 19px #17382129;
+ color:#246e45;font-size:36px;line-height:1;display:grid;place-items:center;
+ cursor:pointer;transition:background .15s,box-shadow .15s;
+}
+.home-carousel-arrow[hidden]{display:none!important}
+.home-carousel-arrow:hover{background:#ecf7ef;box-shadow:0 8px 23px #17382140}
+.home-carousel-arrow:focus-visible{outline:3px solid #9dd6b3;outline-offset:2px}
+.home-carousel-prev{left:-12px}
+.home-carousel-next{right:-12px}
+@media(max-width:650px){
+ .home-carousel-arrow{display:none!important}
+}
