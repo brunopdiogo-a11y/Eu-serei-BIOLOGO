@@ -349,6 +349,18 @@ $('import').addEventListener('change',async e=>{
 /* Google Drive: autenticação explícita e sincronização automática somente na sessão autorizada. */
 const gdInput=$('google-client-id'),gdConnect=$('google-connect'),gdSync=$('google-sync'),gdDisconnect=$('google-disconnect'),gdStatus=$('google-sync-status');
 gdInput.value=localStorage.getItem('eu-serei-biologo-google-client-id')||'';
+const nativeGoogleDrive=!!(window.Capacitor?.isNativePlatform?.()&&window.Capacitor?.getPlatform?.()==='android');
+if(nativeGoogleDrive){
+ const label=gdInput.closest('label');
+ if(label)label.hidden=true;
+ const info=document.getElementById('google-oauth-web-help');
+ if(info)info.hidden=true;
+ const nativeInfo=document.getElementById('google-oauth-android-help');
+ if(nativeInfo)nativeInfo.hidden=false;
+ gdConnect.textContent='🔐 Conectar Google no Android';
+ gdStatus.textContent='No Android, o Google Play Services autoriza o acesso ao Drive. Não é necessário informar o ID OAuth Web.';
+}
+
 let driveModule=null,autoSyncEnabled=false,autoTimer=null,autoInProgress=false,queuedChanges=false;
 function syncStatus(message){gdStatus.textContent=message;}
 function scheduleCloudSync(delay=2500){
@@ -390,11 +402,11 @@ gdConnect.addEventListener('click',async()=>{
   const clientId=gdInput.value.trim();
   driveModule=await import('./google-drive-sync.js');
   await driveModule.connectDrive(clientId);
-  localStorage.setItem('eu-serei-biologo-google-client-id',clientId);
+  if(!nativeGoogleDrive)localStorage.setItem('eu-serei-biologo-google-client-id',clientId);
   gdSync.disabled=false;gdDisconnect.disabled=false;
   syncStatus('✅ Conta autorizada. Clique em Sincronizar agora para iniciar a sincronização automática desta sessão.');
  }catch(err){
-  syncStatus('⚠️ '+(err?.message||String(err))+' Em Android WebView, o login Google pode exigir abertura em navegador externo.');
+  syncStatus('⚠️ '+(err?.message||String(err))+(nativeGoogleDrive?' Verifique o cliente OAuth Android no Google Cloud (pacote e SHA-1 do APK).':' Verifique as origens do cliente OAuth Web.'));
   gdSync.disabled=true;gdDisconnect.disabled=true;
  }finally{gdConnect.disabled=false;}
 });
