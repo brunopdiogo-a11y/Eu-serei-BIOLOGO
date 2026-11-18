@@ -227,7 +227,16 @@ jobs:
           test -n "$APKSIGNER"
           "$APKSIGNER" verify EU_SEREI_BIOLOGO.apk
           echo "SHA-1 do certificado de assinatura (cadastre este valor no cliente OAuth Android):"
-          "$APKSIGNER" verify --print-certs EU_SEREI_BIOLOGO.apk | grep -i 'Signer #1 certificate SHA-1 digest:' || true
+          CERT_SHA1="$("$APKSIGNER" verify --print-certs EU_SEREI_BIOLOGO.apk | sed -n 's/^Signer #1 certificate SHA-1 digest: //p' | head -1)"
+          if [ -z "$CERT_SHA1" ]; then
+            echo "::error::Não foi possível extrair SHA-1 do APK assinado."
+            exit 1
+          fi
+          echo "SHA-1 do APK assinado: $CERT_SHA1"
+          echo "### OAuth Android — impressão digital SHA-1" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pacote: \`br.com.eusereibiologo.app\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "SHA-1: \`$CERT_SHA1\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Registre no Google Cloud como cliente OAuth Android, no mesmo projeto do OAuth Web." >> "$GITHUB_STEP_SUMMARY"
           echo "APK release assinado e validado."
       - name: Publicar APK
         uses: actions/upload-artifact@v4
