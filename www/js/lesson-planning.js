@@ -84,12 +84,12 @@ export function bindLessonPlanning(frame) {
       const pending=Math.max(0,targetStages-completed);
       const end=date(plan.end);
       const remainingCalendar=end?Math.max(0,diffDays(date(today()),end)+1):0;
-      const studyDays=remainingCalendar?Math.max(1,Math.ceil(remainingCalendar*Math.max(1,Math.min(7,Number(plan.daysPerWeek)||4))/7)):0;
-      planArea.append(pTag('Início: '+dateFmt(plan.start)+' · Prazo: '+dateFmt(plan.end)));
+      const studyDays=remainingCalendar;
+      planArea.append(pTag('Início: '+dateFmt(plan.start)+' · Prazo: '+dateFmt(plan.end)+' · '+(end&&diffDays(date(today()),end)>=0?'Faltam '+diffDays(date(today()),end)+' dia(s) para concluir':'Prazo vencido')));
       if(!pending)planArea.append(pTag('✅ Meta de etapas concluída!'));
       else if(!studyDays)planArea.append(pTag('⚠️ Prazo encerrado. Ajuste a meta ou a data no Planejamento geral.'));
       else planArea.append(pTag('🎯 Meta diária: cerca de '+Math.ceil(pending/studyDays)+' etapa(s) · '+studyDays+' dia(s) de estudo restantes'));
-      planArea.append(create('small','','Estimativa baseada em '+(plan.daysPerWeek||4)+' dias de estudo por semana.'));
+      planArea.append(create('small','','Metas calculadas pelos dias corridos disponíveis até o prazo, incluindo hoje.'));
     }
     target.append(planArea);
     const link=create('a','lesson-plan-edit','✎ Alterar planejamento geral');
