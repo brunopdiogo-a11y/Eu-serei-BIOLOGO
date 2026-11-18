@@ -58,6 +58,16 @@ body.native-android .study-question-panel{inset:0!important}
 .study-ai-image-card strong{font:700 12px/1.3 system-ui;color:#2e5940;overflow-wrap:anywhere}
 .study-ai-image-card small{font:10px/1.35 system-ui;color:#65826a}
 .study-ai-bubble p strong{font-weight:750}
+
+/* Tutor: imagem realmente gerada pela IA, exibida na conversa. */
+.study-ai-visual-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}
+.study-ai-visual-actions button{background:#ebf5ee!important;color:#236a42!important;border:1px solid #c9dfce!important;border-radius:10px;padding:10px 12px;min-height:40px;font-weight:750;cursor:pointer}
+.study-ai-visual-actions button:disabled{opacity:.55;cursor:wait}
+.study-ai-generated{display:grid;gap:8px;margin-top:13px;padding:10px;border-radius:12px;border:1px solid #d9e8dc;background:#f7faf7;font-size:12px;color:#426b4d}
+.study-ai-generated img{display:block;width:min(100%,620px);height:auto;border-radius:9px;object-fit:contain;background:#fff}
+.study-ai-generated small{font-size:11px;line-height:1.5;color:#637b68}
+.study-ai-download{font-size:12px;font-weight:750;color:#27774c;text-decoration:none}
+@media(max-width:600px){.study-ai-visual-actions button{flex:1 1 150px}.study-ai-generated{padding:7px}}
 </style></head><body>
 <header class="reader-toolbar"><a href="./index.html" class="reader-brand">← EU SEREI BIOLOGO</a><div class="reader-toolbar-actions"><button type="button" id="reading-chapters" class="quiet-control">📚 Estudos</button><span class="speech-header-actions"><button type="button" id="voice-toggle" class="quiet-control" aria-label="Ouvir o parágrafo selecionado">🔊 Ouvir</button><button type="button" id="voice-settings-toggle" class="quiet-control speech-settings" aria-expanded="false" aria-controls="voice-panel" aria-label="Configurações da narração" title="Configurações da narração">⚙</button></span><button class="lesson-plan-button" id="lesson-plan-toggle" aria-expanded="false">📅 Cronograma</button></div></header><aside id="lesson-plan-panel" class="lesson-plan-panel" hidden><div id="lesson-plan-summary"></div></aside>
 <div id="message" class="error">Abrindo material privado…</div>
