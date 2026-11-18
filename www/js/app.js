@@ -17,7 +17,7 @@ function sessionsFor(id){return state.sessions.filter(x=>!id||x.courseId===id);}
 function studiedMinutes(id,start){return sessionsFor(id).filter(s=>!start||s.date>=start).reduce((sum,s)=>sum+Number(s.minutes||0),0);}
 function countDone(id){const c=course(id);let count=0;for(let i=1;i<=c.lessons;i++)if(state.completed[id+':'+i])count++;return count;}
 function notify(text){const t=$('toast');t.textContent=text;t.style.display='block';clearTimeout(notify.timeout);notify.timeout=setTimeout(()=>t.style.display='none',3000);}
-function save(){state=writeState(state);render();}
+function save(){state=writeState(state);render();scheduleCloudSync();}
 function navigate(view){if(!$( 'view-'+view))view='home';current=view;document.querySelectorAll('.view').forEach(x=>x.classList.toggle('visible',x.id==='view-'+view));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===view));window.scrollTo({top:0,behavior:'instant'});if(view==='planning')fillPlan();render();}
 document.querySelectorAll('[data-view]').forEach(el=>el.addEventListener('click',()=>navigate(el.dataset.view)));
 $('settings-button').addEventListener('click',()=>navigate('settings'));
@@ -295,40 +295,77 @@ $('import').addEventListener('change',async e=>{
   }
   render();fillPlan();
   $('backup-status').textContent='✅ Backup mesclado: '+incoming.sessions.length+' registros recebidos'+(complete&&raw.ecologyPresent?', com progresso de Ecologia Vegetal':'')+'. Dados anteriores preservados.';
+  scheduleCloudSync(2000);
  }catch(error){$('backup-status').textContent='⚠️ Importação não concluída: '+(error?.message||String(error));}
  e.target.value='';
 });
 
-/* Google Drive: conexão explícita, nenhuma credencial secreta armazenada. */
+/* Google Drive: autenticação explícita e sincronização automática somente na sessão autorizada. */
 const gdInput=$('google-client-id'),gdConnect=$('google-connect'),gdSync=$('google-sync'),gdDisconnect=$('google-disconnect'),gdStatus=$('google-sync-status');
 gdInput.value=localStorage.getItem('eu-serei-biologo-google-client-id')||'';
-let driveModule=null;
+let driveModule=null,autoSyncEnabled=false,autoTimer=null,autoInProgress=false,queuedChanges=false;
+function syncStatus(message){gdStatus.textContent=message;}
+function scheduleCloudSync(delay=2500){
+ if(!autoSyncEnabled||!driveModule?.connected()||!navigator.onLine)return;
+ queuedChanges=true;
+ clearTimeout(autoTimer);
+ autoTimer=setTimeout(()=>{runCloudSync(true);},delay);
+}
+async function runCloudSync(automatic=false){
+ if(autoInProgress){queuedChanges=true;return;}
+ if(!driveModule?.connected()){
+  autoSyncEnabled=false;gdSync.disabled=true;
+  syncStatus('⚠️ Conexão Google expirada. Reconecte para continuar a sincronização.');
+  return;
+ }
+ if(!navigator.onLine){
+  syncStatus('📴 Sem internet. Seus dados continuam locais; sincronize ao reconectar.');
+  return;
+ }
+ autoInProgress=true;queuedChanges=false;gdSync.disabled=true;
+ if(!automatic)syncStatus('Consultando Google Drive e preservando cópia local…');
+ try{
+  const result=await driveModule.syncDrive();
+  state=readState();render();fillPlan();
+  syncStatus('✅ Google Drive: '+new Date(result.at).toLocaleString('pt-BR')+' · '+result.plans+' plano(s), '+result.sessions+' sessões, '+result.stages+' etapas concluídas. Sincronização automática ativa nesta sessão.');
+  autoSyncEnabled=true;
+ }catch(err){
+  syncStatus('⚠️ Não sincronizado: '+(err?.message||String(err))+' Dados locais preservados.');
+  if(!driveModule.connected())autoSyncEnabled=false;
+ }finally{
+  autoInProgress=false;
+  gdSync.disabled=!driveModule?.connected();
+  if(queuedChanges&&autoSyncEnabled)scheduleCloudSync(6000);
+ }
+}
 gdConnect.addEventListener('click',async()=>{
- gdConnect.disabled=true;gdStatus.textContent='Abrindo autorização do Google…';
+ gdConnect.disabled=true;syncStatus('Abrindo autorização do Google…');
  try{
   const clientId=gdInput.value.trim();
   driveModule=await import('./google-drive-sync.js');
   await driveModule.connectDrive(clientId);
   localStorage.setItem('eu-serei-biologo-google-client-id',clientId);
   gdSync.disabled=false;gdDisconnect.disabled=false;
-  gdStatus.textContent='✅ Conta autorizada neste navegador. Clique em Sincronizar agora.';
- }catch(err){gdStatus.textContent='⚠️ '+err.message;gdSync.disabled=true;gdDisconnect.disabled=true;}
- finally{gdConnect.disabled=false;}
+  syncStatus('✅ Conta autorizada. Clique em Sincronizar agora para iniciar a sincronização automática desta sessão.');
+ }catch(err){
+  syncStatus('⚠️ '+(err?.message||String(err))+' Em Android WebView, o login Google pode exigir abertura em navegador externo.');
+  gdSync.disabled=true;gdDisconnect.disabled=true;
+ }finally{gdConnect.disabled=false;}
 });
-gdSync.addEventListener('click',async()=>{
- if(!driveModule?.connected())return;
- gdSync.disabled=true;gdStatus.textContent='Consultando Google Drive e preservando cópia local…';
- try{
-  const result=await driveModule.syncDrive();
-  state=readState();render();fillPlan();
-  gdStatus.textContent='✅ Sincronizado em '+new Date(result.at).toLocaleString('pt-BR')+'. '+result.plans+' planejamento(s), '+result.sessions+' sessões. Arquivos acadêmicos não enviados.';
- }catch(err){gdStatus.textContent='⚠️ '+err.message+' Seus dados locais foram mantidos.';}
- finally{gdSync.disabled=!driveModule?.connected();}
-});
+gdSync.addEventListener('click',()=>runCloudSync(false));
 gdDisconnect.addEventListener('click',()=>{
+ clearTimeout(autoTimer);autoSyncEnabled=false;queuedChanges=false;
  driveModule?.disconnectDrive();gdSync.disabled=true;gdDisconnect.disabled=true;
- gdStatus.textContent='Google desconectado nesta aba. Seus dados locais permanecem salvos.';
+ syncStatus('Google desconectado. Seus dados continuam salvos neste dispositivo.');
 });
+window.addEventListener('online',()=>scheduleCloudSync(1200));
+window.addEventListener('focus',()=>scheduleCloudSync(1200));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)scheduleCloudSync(1200);});
+window.addEventListener('storage',event=>{
+ if(event.key==='estudos:v1'||event.key==='ecologia-vegetal-estudos-v1')scheduleCloudSync(2500);
+});
+// Verificação periódica ajuda a captar gravações feitas na página de leitura.
+setInterval(()=>{if(!document.hidden)scheduleCloudSync(60000);},90000);
 
 fillSelectors();fillPlan();paintTimer();render();
 window.addEventListener('pageshow',()=>{state=readState();render();});
