@@ -22,10 +22,29 @@ export function initReadingLayout(frame){
    const style=doc.createElement('style');style.id='study-focus-style';
    style.textContent=`.study-focus-hidden{display:none!important}.study-focus-reader{margin-top:0!important;padding-top:0!important;scroll-margin-top:12px!important}
 @media(min-width:850px){
- body.study-focus-wide-layout{width:100%!important;max-width:none!important}
- .study-focus-wide-container{width:100%!important;max-width:none!important;min-width:0!important;grid-column:1/-1!important;flex:1 1 100%!important}
- #articleReader.study-focus-reader{width:min(100%,960px)!important;max-width:960px!important;min-width:0!important;margin-left:auto!important;margin-right:auto!important;padding-inline:clamp(18px,3vw,42px)!important;box-sizing:border-box!important}
- #articleReader.study-focus-reader img,#articleReader.study-focus-reader figure,#articleReader.study-focus-reader table{max-width:100%!important}
+ html:has(body.study-focus-wide-layout),body.study-focus-wide-layout{width:100%!important;max-width:none!important;min-width:0!important;overflow-x:hidden!important}
+ /* A etapa está aninhada em colunas antigas: só aumentar sua width não libera o grid pai. */
+ body.study-focus-wide-layout .study-focus-wide-container{
+  display:block!important;position:static!important;float:none!important;
+  width:100%!important;max-width:none!important;min-width:0!important;
+  flex:1 1 100%!important;grid-column:1/-1!important;grid-row:auto!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  columns:auto!important;column-count:1!important;
+  margin-left:auto!important;margin-right:auto!important;
+  transform:none!important;box-sizing:border-box!important
+ }
+ body.study-focus-wide-layout #articleReader.study-focus-reader{
+  display:block!important;float:none!important;position:relative!important;
+  width:min(100%,960px)!important;max-width:960px!important;min-width:0!important;
+  margin:0 auto!important;padding:12px clamp(20px,3.5vw,46px) 56px!important;
+  grid-column:1/-1!important;grid-template-columns:1fr!important;
+  columns:auto!important;column-count:1!important;
+  box-sizing:border-box!important;transform:none!important
+ }
+ body.study-focus-wide-layout #articleReader.study-focus-reader > *{
+  max-width:100%!important;box-sizing:border-box!important
+ }
+ body.study-focus-wide-layout #articleReader.study-focus-reader :is(img,figure,table,pre,video){max-width:100%!important}
 }
 `;
    doc.head.append(style);
