@@ -303,6 +303,15 @@ $('import').addEventListener('change',async e=>{
    previousEcology=JSON.parse(ecologyRaw);
    if(!isRecord(previousEcology))throw Error('Dados locais de Ecologia inválidos; nada foi importado.');
   }
+  const mergeImportedNotes=(oldNotes,newNotes)=>{
+   const entries=new Map();
+   for(const item of [...(Array.isArray(oldNotes)?oldNotes:[]),...(Array.isArray(newNotes)?newNotes:[])]){
+    if(!isRecord(item)||!item.id)continue;
+    const current=entries.get(item.id);
+    if(!current||importDate(item.updatedAt||item.deletedAt||item.createdAt)>=importDate(current.updatedAt||current.deletedAt||current.createdAt))entries.set(item.id,item);
+   }
+   return [...entries.values()];
+  };
   const previousCourses=localCourseProgress();
   const combinedCourses={...previousCourses};
   if(complete){
@@ -310,6 +319,7 @@ $('import').addEventListener('change',async e=>{
     if(!/^[a-z0-9][a-z0-9-]{0,79}$/.test(id)||!isRecord(value))throw Error('Progresso inválido da disciplina '+id);
     const old=previousCourses[id]||{};
     const mergedCourse={...old,...value};
+    if(Array.isArray(old.notes)||Array.isArray(value.notes))mergedCourse.notes=mergeImportedNotes(old.notes,value.notes);
     for(const field of ['complete','completed']){
      if(isRecord(old[field])||isRecord(value[field]))mergedCourse[field]={...(isRecord(old[field])?old[field]:{}),...(isRecord(value[field])?value[field]:{})};
     }
