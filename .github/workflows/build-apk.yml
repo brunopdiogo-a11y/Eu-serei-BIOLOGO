@@ -72,6 +72,8 @@ jobs:
           mkdir -p "$JAVA_DIR"
           cp android-native/StudySpeechPlugin.java "$JAVA_DIR/"
           cp android-native/BackupExportPlugin.java "$JAVA_DIR/"
+          cp android-native/NativeDriveAuthPlugin.java "$JAVA_DIR/"
+          cp android-native/NativeDriveAuthActivity.java "$JAVA_DIR/"
           cp android-native/AppHealthPlugin.java "$JAVA_DIR/"
           cp android-native/StudyDictationPlugin.java "$JAVA_DIR/"
           cp android-native/StudySpeechService.java "$JAVA_DIR/"
@@ -109,6 +111,13 @@ jobs:
               assert anchor in s, 'Registro do StudySpeech ausente'
               s=s.replace(anchor,anchor+'\n        registerPlugin(BackupExportPlugin.class);',1)
               p.write_text(s)
+          s=p.read_text()
+          if 'registerPlugin(NativeDriveAuthPlugin.class)' not in s:
+              anchor='registerPlugin(StudySpeechPlugin.class);'
+              assert anchor in s, 'Registro base não encontrado'
+              s=s.replace(anchor,anchor+'\n        registerPlugin(NativeDriveAuthPlugin.class);',1)
+              p.write_text(s)
+          assert 'registerPlugin(NativeDriveAuthPlugin.class)' in p.read_text()
           assert 'registerPlugin(BackupExportPlugin.class)' in p.read_text(), 'BackupExport não registrado'
           assert 'registerPlugin(StudyControlsPlugin.class)' in p.read_text()
           assert 'registerPlugin(StudyAlarmPlugin.class)' in p.read_text()
@@ -124,6 +133,8 @@ jobs:
           if entry not in m:m=m.replace('</application>',entry+'\n    </application>')
           media_service='<service android:name=".StudyControlsService" android:exported="false" android:foregroundServiceType="mediaPlayback" />'
           if media_service not in m:m=m.replace('</application>',media_service+'\n    </application>')
+          drive_auth_activity='<activity android:name=".NativeDriveAuthActivity" android:exported="false" />'
+          if drive_auth_activity not in m:m=m.replace('</application>',drive_auth_activity+'\n    </application>')
           alarm_receiver='<receiver android:name=".StudyAlarmReceiver" android:enabled="true" android:exported="false" />'
           alarm_service='<service android:name=".StudyAlarmService" android:exported="false" android:foregroundServiceType="mediaPlayback" />'
           alarm_activity='<activity android:name=".StudyAlarmActivity" android:exported="false" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:showWhenLocked="true" android:turnScreenOn="true" />'
@@ -140,6 +151,18 @@ jobs:
           assert 'StudyAlarmService' in m
           assert 'StudyAlarmActivity' in m
           assert 'StudyControlsService' in m
+          PY
+      - name: Adicionar dependência Google Play Services AuthorizationClient
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android/app/build.gradle')
+          s=p.read_text()
+          dependency="implementation 'com.google.android.gms:play-services-auth:22.0.0'"
+          assert 'dependencies {' in s, 'Bloco dependencies não encontrado'
+          if dependency not in s:
+              s=s.replace('dependencies {','dependencies {\n    '+dependency,1)
+              p.write_text(s)
           PY
       - name: Gerar som do alarme de estudo
         run: python3 scripts/generate-reminder-sound.py
@@ -203,6 +226,8 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
           test -n "$APKSIGNER"
           "$APKSIGNER" verify EU_SEREI_BIOLOGO.apk
+          echo "SHA-1 do certificado de assinatura (cadastre este valor no cliente OAuth Android):"
+          "$APKSIGNER" verify --print-certs EU_SEREI_BIOLOGO.apk | grep -i 'Signer #1 certificate SHA-1 digest:' || true
           echo "APK release assinado e validado."
       - name: Publicar APK
         uses: actions/upload-artifact@v4
