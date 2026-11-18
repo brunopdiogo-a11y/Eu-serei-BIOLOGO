@@ -4,6 +4,7 @@
 import {readState,writeState} from './storage.js';
 const FILE='EU_SEREI_BIOLOGO_state_v1.json';
 const ECOLOGY_KEY='ecologia-vegetal-estudos-v1';
+const COURSE_PROGRESS_PREFIX='eu-serei-biologo-course-progress:'; // futuros leitores: apenas progresso, nunca materiais completos
 const SCOPES='https://www.googleapis.com/auth/drive.appdata';
 const BASE='https://www.googleapis.com/drive/v3/files';
 let token=null,tokenClient=null,syncBusy=false;
@@ -19,6 +20,41 @@ function readEcology(){
  return result;
 }
 function validEcology(x){return x===null||(isRecord(x)&&isRecord(x.complete));}
+function readCourseProgress(){
+ const progress={};
+ for(let i=0;i<localStorage.length;i++){
+  const key=localStorage.key(i);
+  if(!key?.startsWith(COURSE_PROGRESS_PREFIX))continue;
+  const id=key.slice(COURSE_PROGRESS_PREFIX.length);
+  if(!/^[a-z0-9][a-z0-9-]{0,79}$/.test(id))continue;
+  const value=JSON.parse(localStorage.getItem(key));
+  if(!isRecord(value))throw Error('Progresso inválido da disciplina '+id);
+  progress[id]=value;
+ }
+ return progress;
+}
+function mergeCourseProgress(local,remote){
+ const result={};
+ for(const id of new Set([...Object.keys(remote||{}),...Object.keys(local||{})])){
+  const left=local?.[id],right=remote?.[id];
+  if(left&&!isRecord(left)||right&&!isRecord(right))throw Error('Formato de progresso por disciplina inválido: '+id);
+  const newer=timestamp(left?.updatedAt)>=timestamp(right?.updatedAt)?left:right;
+  const merged={...(right||{}),...(left||{})};
+  for(const key of new Set([...Object.keys(right||{}),...Object.keys(left||{})])){
+   if(key==='completed'||key==='complete'){
+    const complete={...(isRecord(right?.[key])?right[key]:{})};
+    for(const [stage,when] of Object.entries(isRecord(left?.[key])?left[key]:{})){
+     if(when&&!complete[stage]||timestamp(when)>timestamp(complete[stage]))complete[stage]=when;
+    }
+    merged[key]=complete;
+   }else if(['answers','sessions','examHistory','reviewQueue'].includes(key)){
+    merged[key]=mergeUnique(right?.[key],left?.[key]);
+   }else if(newer&&key in newer)merged[key]=newer[key];
+  }
+  result[id]=merged;
+ }
+ return result;
+}
 function mergeUnique(a,b){
  const map=new Map();
  for(const item of [...(Array.isArray(a)?a:[]),...(Array.isArray(b)?b:[])]){
@@ -70,9 +106,10 @@ function mergeEcology(local,remote){
 }
 function decodeRemote(raw){
  // Arquivo anterior era um estado simples; arquivos atuais incluem progresso de Ecologia.
- if(validState(raw))return {state:raw,ecology:null};
+ if(validState(raw))return {state:raw,ecology:null,courses:{}};
  if(!isRecord(raw)||!validState(raw.state)||!validEcology(raw.ecologyProgress))throw Error('Formato remoto desconhecido. Nenhum dado foi sobrescrito.');
- return {state:raw.state,ecology:raw.ecologyProgress||null};
+ if(raw.courseProgress!==undefined&&!isRecord(raw.courseProgress))throw Error('Progresso de disciplinas inválido no Drive.');
+ return {state:raw.state,ecology:raw.ecologyProgress||null,courses:raw.courseProgress||{}};
 }
 function loadGIS(){
  if(window.google?.accounts?.oauth2)return Promise.resolve();
@@ -147,35 +184,37 @@ export async function syncDrive(){
  if(syncBusy)throw Error('Sincronização já em andamento.');
  syncBusy=true;
  try{
-  const local=readState(),localEcology=readEcology();
+  const local=readState(),localEcology=readEcology(),localCourses=readCourseProgress();
   if(!validState(local))throw Error('Formato local incompatível.');
   // Cópia de segurança antes de alterar qualquer registro ou arquivo remoto.
   localStorage.setItem('eu-serei-biologo-pre-sync-backup',JSON.stringify({
    backupFormat:'eu-serei-biologo-completo-v2',createdAt:new Date().toISOString(),
-   state:local,ecologyProgress:localEcology,ecologyPresent:localEcology!==null
+   state:local,ecologyProgress:localEcology,ecologyPresent:localEcology!==null,courseProgress:localCourses
   }));
   const files=await listFiles();
   if(files.length>1)throw Error('Existem arquivos de sincronização duplicados no Drive.');
   const remoteFile=files[0];
-  let remote={state:local,ecology:null};
+  let remote={state:local,ecology:null,courses:{}};
   if(remoteFile)remote=decodeRemote(await download(remoteFile.id));
   const merged=mergeStudy(local,remote.state);
   const ecology=mergeEcology(localEcology,remote.ecology);
+  const courses=mergeCourseProgress(localCourses,remote.courses);
   const syncAt=new Date().toISOString();
   merged.sync={...(merged.sync||{}),provider:'google-drive',lastSyncedAt:syncAt};
   const payload={
-   schemaVersion:2,updatedAt:syncAt,state:merged,ecologyProgress:ecology
+   schemaVersion:2,updatedAt:syncAt,state:merged,ecologyProgress:ecology,courseProgress:courses
   };
   // Detecta alterações durante a leitura; não é garantia de escrita transacional.
   const check=await listFiles();
   if(check.length!==files.length||check[0]?.id!==remoteFile?.id||check[0]?.modifiedTime!==remoteFile?.modifiedTime)throw Error('Os dados do Drive mudaram durante a sincronização. Tente novamente.');
   // Se algum registro local mudou durante a espera pela rede, não sobrescrevê-lo.
-  if(JSON.stringify(readState())!==JSON.stringify(local)||JSON.stringify(readEcology())!==JSON.stringify(localEcology))throw Error('O estudo mudou durante a sincronização. Nova tentativa necessária.');
+  if(JSON.stringify(readState())!==JSON.stringify(local)||JSON.stringify(readEcology())!==JSON.stringify(localEcology)||JSON.stringify(readCourseProgress())!==JSON.stringify(localCourses))throw Error('O estudo mudou durante a sincronização. Nova tentativa necessária.');
   if(remoteFile)await update(remoteFile.id,payload);else await create(payload);
   // Escreve primeiro o progresso de etapas e depois o estado geral.
   if(ecology!==null)localStorage.setItem(ECOLOGY_KEY,JSON.stringify(ecology));
+  for(const [id,progress] of Object.entries(courses))localStorage.setItem(COURSE_PROGRESS_PREFIX+id,JSON.stringify(progress));
   writeState(merged);
-  return {at:syncAt,sessions:merged.sessions.length,plans:Object.keys(merged.plans).length,stages:Object.values(ecology?.complete||{}).filter(Boolean).length};
+  return {at:syncAt,sessions:merged.sessions.length,plans:Object.keys(merged.plans).length,stages:Object.values(ecology?.complete||{}).filter(Boolean).length,disciplines:Object.keys(courses).length};
  }finally{syncBusy=false;}
 }
 export function disconnectDrive(){token=null;expiry=0;tokenClient=null;}
