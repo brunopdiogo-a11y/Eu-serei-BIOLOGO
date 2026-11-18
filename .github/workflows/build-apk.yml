@@ -227,16 +227,29 @@ jobs:
           test -n "$APKSIGNER"
           "$APKSIGNER" verify EU_SEREI_BIOLOGO.apk
           echo "SHA-1 do certificado de assinatura (cadastre este valor no cliente OAuth Android):"
-          CERT_SHA1="$("$APKSIGNER" verify --print-certs EU_SEREI_BIOLOGO.apk | sed -n 's/^Signer #1 certificate SHA-1 digest: //p' | head -1)"
-          if [ -z "$CERT_SHA1" ]; then
-            echo "::error::Não foi possível extrair SHA-1 do APK assinado."
-            exit 1
-          fi
-          echo "SHA-1 do APK assinado: $CERT_SHA1"
+          # Extrai o certificado assinado com parser flexível; não bloqueia
+          # um APK válido por divergência de rótulos na saída do apksigner.
+          "$APKSIGNER" verify --print-certs EU_SEREI_BIOLOGO.apk > "$RUNNER_TEMP/apk-certs.txt" 2>&1
+          CERT_SHA1="$(python3 - <<'PY'
+          import re
+          from pathlib import Path
+          data=Path('/tmp/unused').read_text() if False else Path(__import__('os').environ['RUNNER_TEMP'],'apk-certs.txt').read_text()
+          hits=re.findall(r'(?:SHA[ -]?1|SHA1)\s*(?:digest|fingerprint)?\s*:\s*([a-fA-F0-9:]{40,59})',data,re.I)
+          cleaned=[re.sub(r'[^a-fA-F0-9]','',x).lower() for x in hits]
+          print(next((x for x in cleaned if len(x)==40),''))
+          PY
+          )"
           echo "### OAuth Android — impressão digital SHA-1" >> "$GITHUB_STEP_SUMMARY"
-          echo "Pacote: \`br.com.eusereibiologo.app\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "SHA-1: \`$CERT_SHA1\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "Registre no Google Cloud como cliente OAuth Android, no mesmo projeto do OAuth Web." >> "$GITHUB_STEP_SUMMARY"
+          echo 'Pacote: `br.com.eusereibiologo.app`' >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$CERT_SHA1" ]; then
+            echo "SHA-1 do APK assinado: $CERT_SHA1"
+            echo "SHA-1: \`$CERT_SHA1\`" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::O APK foi validado, mas a saída do apksigner não trouxe o SHA-1 no formato esperado."
+            echo "SHA-1: consulte a saída do apksigner na etapa Nomear e verificar APK assinado." >> "$GITHUB_STEP_SUMMARY"
+            cat "$RUNNER_TEMP/apk-certs.txt"
+          fi
+          echo "Registre o cliente OAuth Android no Google Cloud com o mesmo projeto OAuth Web." >> "$GITHUB_STEP_SUMMARY"
           echo "APK release assinado e validado."
       - name: Publicar APK
         uses: actions/upload-artifact@v4
