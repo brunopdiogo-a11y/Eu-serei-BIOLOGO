@@ -84,12 +84,29 @@ export function renderStudyDashboard(root,dots,info){
    button.addEventListener('click',()=>cards[index].scrollIntoView({behavior:'smooth',block:'nearest',inline:'start'}));
    return button;
  }));
+ const prevButton=document.getElementById('home-carousel-prev');
+ const nextButton=document.getElementById('home-carousel-next');
+ const cardStep=()=>cards.length>1?cards[1].offsetLeft-cards[0].offsetLeft:cards[0]?.getBoundingClientRect().width||300;
  const update=()=>{
-   const width=(cards[0]?.getBoundingClientRect().width||1)+12;
-   const current=Math.min(cards.length-1,Math.round(root.scrollLeft/width));
+   const current=Math.min(cards.length-1,Math.max(0,Math.round(root.scrollLeft/Math.max(1,cardStep()))));
    [...dots.children].forEach((btn,index)=>btn.setAttribute('aria-current',index===current?'true':'false'));
+   const maxScroll=Math.max(0,root.scrollWidth-root.clientWidth);
+   if(prevButton)prevButton.hidden=maxScroll<=2||root.scrollLeft<=2;
+   if(nextButton)nextButton.hidden=maxScroll<=2||root.scrollLeft>=maxScroll-2;
  };
+ const move=direction=>{
+   const step=Math.max(1,cardStep());
+   const target=direction>0?cards.find(card=>card.offsetLeft-root.offsetLeft>root.scrollLeft+2):[...cards].reverse().find(card=>card.offsetLeft-root.offsetLeft<root.scrollLeft-2);
+   root.scrollTo({left:target?target.offsetLeft-root.offsetLeft:root.scrollLeft+direction*step,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+ };
+ if(prevButton)prevButton.onclick=()=>move(-1);
+ if(nextButton)nextButton.onclick=()=>move(1);
  root.onscroll=update;
+ if(window.ResizeObserver){
+   if(root._dashboardResizeObserver)root._dashboardResizeObserver.disconnect();
+   root._dashboardResizeObserver=new ResizeObserver(update);
+   root._dashboardResizeObserver.observe(root);
+ }else window.addEventListener('resize',update,{passive:true});
  root.scrollLeft=Math.max(0,Math.min(previous,root.scrollWidth-root.clientWidth));
  update();
 }
