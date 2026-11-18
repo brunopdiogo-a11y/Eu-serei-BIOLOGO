@@ -88,7 +88,13 @@ function getAlerts(){
  else if(s.kind==='attention')alerts.push({kind:'attention',icon:'🟡',title:c.title+': ritmo de estudo',desc:'Você concluiu '+s.actual+' etapa(s); o ritmo estimado até hoje seria '+s.expected+'.'});
  else if(s.kind==='good')alerts.push({kind:'good',icon:'✅',title:c.title+': planejamento em dia',desc:'Seu ritmo está adequado ao planejamento atual.'});
  });
- const ecology=courses.find(c=>c.id==='ecologia-vegetal');const ep=state.plans['ecologia-vegetal'];if(ep&&ecology){const d=dailyTarget(ecology,ep);if(!d.late&&d.remainingStages>0)alerts.push({kind:'neutral',icon:'📖',title:'Meta diária · Ecologia Vegetal',desc:'Estude aproximadamente '+d.stagesPerDay+' etapa(s) hoje para acompanhar seu prazo.'});}
+ for(const c of courses){
+  const plan=state.plans[c.id];if(!plan)continue;
+  const daily=dailyTarget(c,plan);
+  if(daily.late||!daily.remainingLessons&&!daily.remainingStages)continue;
+  const amount=daily.remainingStages===null?daily.lessonsPerDay+' aula(s)':daily.stagesPerDay+' etapa(s)';
+  alerts.push({kind:'neutral',icon:'📖',title:'Meta diária · '+c.title,desc:daily.availableDays+' dia(s) até o prazo, incluindo hoje · aproximadamente '+amount+' por dia.'});
+ }
  if(!Object.keys(state.plans).length)alerts.push({kind:'neutral',icon:'🌱',title:'Vamos organizar sua primeira matéria?',desc:'Defina as datas de Ecologia Vegetal em Meu Planejamento.'});
  return alerts.sort((a,b)=>({urgent:0,attention:1,neutral:2,good:3}[a.kind]-{urgent:0,attention:1,neutral:2,good:3}[b.kind]));
 }
