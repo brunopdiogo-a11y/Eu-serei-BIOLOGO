@@ -74,7 +74,7 @@ public class NativeDriveAuthActivity extends Activity {
         String accessToken = result.getAccessToken();
         if (accessToken == null || accessToken.isEmpty() ||
             result.getGrantedScopes() == null ||
-            !result.getGrantedScopes().contains(DRIVE_APPDATA)) {
+            !result.getGrantedScopes().contains(new Scope(DRIVE_APPDATA))) {
             fail("O acesso à pasta privada do Google Drive não foi autorizado.");
             return;
         }
