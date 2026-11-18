@@ -100,12 +100,17 @@ test('busca visual extrai termos do assunto e tenta sinônimos quando a primeira
  try{
   globalThis.fetch=async url=>{
    const term=new URL(String(url)).searchParams.get('gsrsearch');terms.push(term);
-   return Response.json(term==='xerophyte adaptations'?{query:{pages:[{
-    ns:6,title:'File:Xerophyte plant.jpg',imageinfo:[{mime:'image/jpeg',
+   if(term!=='xerophyte adaptations')return Response.json({query:{pages:[]}});
+   const page={
+    ns:6,title:'File:Xerophyte plant.jpg',
+    imageinfo:[{
+      mime:'image/jpeg',
       thumburl:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/plant.jpg',
       descriptionurl:'https://commons.wikimedia.org/wiki/File:Xerophyte_plant.jpg',
       extmetadata:{LicenseShortName:{value:'CC BY-SA 4.0'}}
-    }]}}]}}:{query:{pages:[]}});
+    }]
+   };
+   return Response.json({query:{pages:[page]}});
   };
   const response=await worker.fetch(new Request('https://tutor.example.workers.dev/images',{
    method:'POST',headers:{Origin:origin,'Content-Type':'application/json',Authorization:'Bearer '+env.STUDY_ACCESS_TOKEN},
