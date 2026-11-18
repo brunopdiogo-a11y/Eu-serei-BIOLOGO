@@ -120,7 +120,8 @@
   <label class="field">ID OAuth do aplicativo Web (Google Cloud)
     <input id="google-client-id" type="text" autocomplete="off" spellcheck="false" placeholder="123456789-abc.apps.googleusercontent.com" style="width:100%;padding:11px;border:1px solid #dfe6df;border-radius:9px">
   </label>
-  <p class="muted">O Client ID identifica a plataforma e não é uma senha. Não cole aqui um Client Secret nem arquivos de credenciais.</p>
+  <p class="muted" id="google-oauth-web-help">O Client ID identifica a plataforma e não é uma senha. Não cole aqui um Client Secret nem arquivos de credenciais.</p>
+  <p class="muted" id="google-oauth-android-help" hidden>📱 No APK, a autorização será solicitada pelo Google Play Services, sem navegador incorporado e sem ID OAuth Web. É necessário cadastrar um cliente OAuth do tipo Android no mesmo projeto Google Cloud, com pacote <code>br.com.eusereibiologo.app</code> e o SHA-1 da assinatura do APK.</p>
   <div class="button-row">
     <button class="btn secondary" id="google-connect">🔐 Conectar Google</button>
     <button class="btn primary" id="google-sync" disabled>🔄 Sincronizar agora</button>
