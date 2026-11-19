@@ -73,6 +73,7 @@ jobs:
           cp android-native/StudySpeechPlugin.java "$JAVA_DIR/"
           cp android-native/BackupExportPlugin.java "$JAVA_DIR/"
           cp android-native/NativeDriveAuthPlugin.java "$JAVA_DIR/"
+          cp android-native/KokoroSetupPlugin.java "$JAVA_DIR/"
           cp android-native/NativeDriveAuthActivity.java "$JAVA_DIR/"
           cp android-native/AppHealthPlugin.java "$JAVA_DIR/"
           cp android-native/StudyDictationPlugin.java "$JAVA_DIR/"
@@ -110,6 +111,12 @@ jobs:
               anchor='registerPlugin(StudySpeechPlugin.class);'
               assert anchor in s, 'Registro do StudySpeech ausente'
               s=s.replace(anchor,anchor+'\n        registerPlugin(BackupExportPlugin.class);',1)
+              p.write_text(s)
+          s=p.read_text()
+          if 'registerPlugin(KokoroSetupPlugin.class)' not in s:
+              anchor='registerPlugin(StudySpeechPlugin.class);'
+              assert anchor in s
+              s=s.replace(anchor,anchor+'\\n        registerPlugin(KokoroSetupPlugin.class);',1)
               p.write_text(s)
           s=p.read_text()
           if 'registerPlugin(NativeDriveAuthPlugin.class)' not in s:
