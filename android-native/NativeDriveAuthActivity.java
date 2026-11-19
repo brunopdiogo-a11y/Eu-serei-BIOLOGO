@@ -7,6 +7,7 @@ import com.google.android.gms.auth.api.identity.AuthorizationRequest;
 import com.google.android.gms.auth.api.identity.AuthorizationResult;
 import com.google.android.gms.auth.api.identity.Identity;
 import com.google.android.gms.common.api.Scope;
+import com.google.android.gms.common.api.ApiException;
 import java.util.Collections;
 
 /**
@@ -43,7 +44,11 @@ public class NativeDriveAuthActivity extends Activity {
                     succeed(result);
                 }
             })
-            .addOnFailureListener(error -> fail("Google Play Services: " + error.getMessage()));
+            .addOnFailureListener(error -> {
+                String detail = error instanceof ApiException
+                    ? " (código Google " + ((ApiException)error).getStatusCode() + ")" : "";
+                fail("Google Play Services não autorizou o acesso" + detail + ": " + error.getMessage());
+            });
     }
 
     @Override
@@ -58,7 +63,7 @@ public class NativeDriveAuthActivity extends Activity {
         if (requestCode != CONSENT_REQUEST) return;
         awaitingConsent = false;
         if (resultCode != RESULT_OK) {
-            fail("Autorização do Google cancelada.");
+            fail("O Google não concluiu o consentimento (resultado " + resultCode + "). Se você não cancelou, confira o cliente OAuth Android, o SHA-1 e a conta de teste.");
             return;
         }
         try {
