@@ -462,12 +462,47 @@ export function initStageSpeech(frame, root) {
   previousButton.addEventListener('click',()=>moveParagraph(-1));
   nextButton.addEventListener('click',()=>moveParagraph(1));
   playPauseButton.addEventListener('click',()=>void begin());
+  // Integração segura com Kokoro Dora através do mecanismo Android Marmalade.
+  // O modelo neural não vem no APK; usuário o instala uma vez no Marmalade.
+  const kokoroPanel=document.getElementById('kokoro-setup');
+  const kokoroMessage=document.getElementById('kokoro-setup-status');
+  let marmaladeActive=false;
+  async function checkKokoroEngine(){
+    if(!nativeMode||!kokoroPanel)return;
+    kokoroPanel.hidden=false;
+    try{
+      const capacitor=window.Capacitor;
+      if(!capacitor?.isPluginAvailable?.('KokoroSetup')){
+        kokoroMessage.textContent='Atualize o APK para ativar o assistente da voz Dora.';
+        return;
+      }
+      const plugin=capacitor.Plugins?.KokoroSetup||capacitor.registerPlugin('KokoroSetup');
+      const result=await plugin.status();
+      marmaladeActive=Boolean(result?.marmaladeActive);
+      kokoroMessage.textContent=marmaladeActive
+        ?'Marmalade é o mecanismo ativo. Configure pf_dora dentro dele e toque em Testar voz.'
+        :'O Android ainda usa outro mecanismo de voz. Ative o Marmalade nas configurações abaixo.';
+      voices();
+    }catch(error){kokoroMessage.textContent='Não foi possível verificar o mecanismo: '+(error?.message||error);}
+  }
+  document.getElementById('kokoro-check')?.addEventListener('click',()=>void checkKokoroEngine());
+  document.getElementById('kokoro-open-settings')?.addEventListener('click',async()=>{
+    try{
+      const capacitor=window.Capacitor;
+      if(!capacitor?.isPluginAvailable?.('KokoroSetup'))throw Error('Atualize o APK primeiro.');
+      const plugin=capacitor.Plugins?.KokoroSetup||capacitor.registerPlugin('KokoroSetup');
+      await plugin.openSettings();
+    }catch(error){kokoroMessage.textContent=error?.message||String(error);}
+  });
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden&&nativeMode)void checkKokoroEngine();
+  });
   function voices(){
     if(nativeMode){
       select.replaceChildren();
       const option=document.createElement('option');
       option.value='native-pt-BR';
-      option.textContent='Português do Brasil · voz Android';
+      option.textContent=marmaladeActive?'Kokoro · Dora (configurar no Marmalade)':'Português do Brasil · voz Android';
       select.append(option);select.disabled=true;
       return;
     }
@@ -537,6 +572,7 @@ export function initStageSpeech(frame, root) {
   if(!synth&&!nativeMode){headerListen.disabled=true;setStatus('Recurso de leitura não disponível neste navegador.');return;}
   root.hidden=false;
   voices();
+  if(nativeMode)void checkKokoroEngine();
   if(synth&&'onvoiceschanged' in synth)synth.addEventListener('voiceschanged',voices);
   frame.addEventListener('load',()=>{
     try{
