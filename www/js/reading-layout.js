@@ -144,12 +144,11 @@ export function initReadingLayout(frame){
      const m=eyebrow.match(/Etapa\\s+(\\d+)\\s+de\\s+\\d+/i);
      if(!m)return null;
      // Fallback para identificar a etapa na aula atualmente aberta.
-     const number=Number(m[1]);
      const progress=readProgress();
      const id=progress.lastStage;
      if(id){
        const ix=stages.findIndex(stage=>stage.id===id);
-       if(ix>=0&&Number(stages[ix].i||stages[ix].n||ix+1)===number)return {index:ix,id};
+       if(ix>=0)return {index:ix,id};
      }
      // Preferir correspondência pela aula e ordinal quando disponíveis.
      const article=doc.getElementById('articleReader');
