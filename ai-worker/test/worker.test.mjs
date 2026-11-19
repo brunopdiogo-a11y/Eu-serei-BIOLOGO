@@ -138,7 +138,7 @@ test('Gemini responde usando chave somente no servidor e contexto da disciplina'
     assert.equal(response.status,200);
     const result=await response.json();
     assert.equal(result.provider,'gemini');
-    assert.equal(result.model,'gemini-2.5-flash');
+    assert.equal(result.model,'gemini-3.5-flash-lite');
     assert.ok(result.answer.includes('fitofisionomias'));
     assert.ok(called.includes('generativelanguage.googleapis.com'));
     assert.equal(usedKey,'server-only-test-key');
@@ -157,4 +157,16 @@ test('Gemini sinaliza erro de autenticação sem chave exposta',async()=>{
     assert.ok(result.error.includes('GEMINI_API_KEY'));
     assert.ok(!JSON.stringify(result).includes('invalid-secret'));
   }finally{globalThis.fetch=original}
+});
+
+test('Gemini com modelo indisponível informa causa sem expor chave',async()=>{
+ const original=globalThis.fetch;
+ try{
+  globalThis.fetch=async()=>new Response(JSON.stringify({error:{code:404,status:'NOT_FOUND',message:'model not available'}}),{status:404});
+  const response=await worker.fetch(chat({question:'O que é campo sujo?'}),{...env,GEMINI_API_KEY:'secret-only-test'});
+  assert.equal(response.status,502);
+  const body=await response.json();
+  assert.ok(body.error.includes('modelo Google Gemini'));
+  assert.ok(!JSON.stringify(body).includes('secret-only-test'));
+ }finally{globalThis.fetch=original}
 });
