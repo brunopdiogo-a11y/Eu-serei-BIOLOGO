@@ -170,7 +170,7 @@ async function searchScientificImages(query){
 
 // Provedor alternativo: API Gemini. A chave é um secret do Worker, nunca do navegador.
 async function answerWithGemini(env,history,text){
-  const model=String(env.GEMINI_MODEL||"gemini-2.5-flash");
+  const model=String(env.GEMINI_MODEL||"gemini-3.5-flash-lite");
   if(!/^gemini-[a-z0-9.-]+$/.test(model))throw Error("Modelo Gemini configurado incorretamente.");
   const contents=history.map(m=>({
     role:m.role==="assistant"?"model":"user",
@@ -192,6 +192,7 @@ async function answerWithGemini(env,history,text){
     const limited=response.status===429||/quota|resource_exhausted/i.test(detail);
     if(limited)throw Error("GEMINI_LIMIT");
     if(response.status===401||response.status===403)throw Error("GEMINI_AUTH");
+    if(response.status===404)throw Error("GEMINI_MODEL_NOT_AVAILABLE:"+model);
     throw Error("GEMINI_HTTP_"+response.status);
   }
   const body=await response.json();
@@ -294,6 +295,7 @@ export default {
       // A cota diária gratuita pode ser atingida, sem gerar cobrança se a
       // conta permanecer no plano gratuito.
       const hint=String(e?.message||"").toLowerCase();
+      if(hint.includes("gemini_model_not_available"))return respond({error:"O modelo Google Gemini configurado não está disponível para esta chave. Modelo: "+String(env.GEMINI_MODEL||"gemini-3.5-flash-lite")+". Confira os modelos e limites no Google AI Studio."},502,origin);
       if(hint.includes("gemini_auth"))return respond({error:"A chave do Google Gemini não foi autorizada. Verifique GEMINI_API_KEY no Cloudflare."},502,origin);
       if(hint.includes("gemini_limit"))return respond({error:"O limite de uso do Google Gemini foi atingido. Verifique sua cota."},429,origin);
       if(hint.includes("gemini_http_"))return respond({error:"O Google Gemini não respondeu corretamente ("+hint.replace("gemini_http_","HTTP ")+")."},502,origin);
