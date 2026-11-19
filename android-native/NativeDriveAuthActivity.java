@@ -18,10 +18,12 @@ public class NativeDriveAuthActivity extends Activity {
     private static final int CONSENT_REQUEST = 6501;
     private static final String DRIVE_APPDATA = "https://www.googleapis.com/auth/drive.appdata";
     private boolean awaitingConsent = false;
+    private boolean silent = false;
 
     @Override
     public void onCreate(Bundle state) {
         super.onCreate(state);
+        silent = getIntent().getBooleanExtra("silent", false);
         if (state != null) {
             // Don't restart an authorization flow on configuration change.
             awaitingConsent = state.getBoolean("awaitingConsent", false);
@@ -33,6 +35,10 @@ public class NativeDriveAuthActivity extends Activity {
         Identity.getAuthorizationClient(this).authorize(request)
             .addOnSuccessListener(result -> {
                 if (result.hasResolution()) {
+                    if (silent) {
+                        fail("GOOGLE_INTERACTION_REQUIRED");
+                        return;
+                    }
                     try {
                         awaitingConsent = true;
                         startIntentSenderForResult(result.getPendingIntent().getIntentSender(),
