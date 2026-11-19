@@ -110,10 +110,8 @@ export function initStageSpeech(frame, root) {
           text:item.text,lang:'pt-BR',rate:Number(rate.value),pitch:1,volume:1,queueStrategy:0
         }),45000,'Reprodução da frase');
         if(session!==token||!active||paused)return;
-        // Na tela ativa, as pausas entre frases seguem a hierarquia:
-        // cortes de oração sem atraso artificial; ponto-e-vírgula < ponto final.
-        // Não atrasamos com temporizadores em segundo plano para evitar
-        // bloqueio pelos limites de execução do WebView Android.
+        // Não somar intervalos artificiais aos silêncios da voz neural.
+        // O término de speak() já respeita a prosódia interna do motor.
         if(!document.hidden&&item.pause>0){
           await new Promise(resolve=>setTimeout(resolve,item.pause));
           if(session!==token||!active||paused)return;
@@ -322,7 +320,7 @@ export function initStageSpeech(frame, root) {
     // de enviar o texto ao motor. O conteúdo acadêmico original não é alterado.
     const spoken=prepareScientificSpeech(text,speechOptions());
     return splitScientificSentences(spoken).filter(Boolean).map(phrase=>({
-      text:phrase,pause:/[.!?]$/.test(phrase)?90:/;$/.test(phrase)?65:0
+      text:phrase,pause:0 // O motor neural decide a pausa pela pontuação da frase.
     }));
   }
   function frameStage(){
