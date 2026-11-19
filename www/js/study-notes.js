@@ -9,7 +9,7 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
  const save=$('study-note-save'),cancel=$('study-note-cancel');
  const editor=$('study-note-editor'),list=$('study-notes-list');
  const status=$('study-notes-status'),count=$('study-notes-count');
- let selection='',selectionStage='',editingId=null;
+ let selection='',selectionStage='',selectionStageId='',editingId=null;
  const isRecord=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
  function getData(){
   let parsed=null;
@@ -24,6 +24,13 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
   localStorage.setItem(key,JSON.stringify(next));
   window.dispatchEvent(new CustomEvent('eusereibiologo:notes-changed',{detail:{courseId}}));
  }
+ const stageId=()=>{
+  try{
+   const saved=JSON.parse(localStorage.getItem('ecologia-vegetal-estudos-v1')||'{}');
+   const id=String(saved.lastStage||'');
+   return /^e[1-6]_\\d+$/.test(id)?id:'';
+  }catch{return ''}
+ };
  const stageName=()=>{
   try{
    const doc=frame.contentDocument;
@@ -41,7 +48,7 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
    const chosen=picked?.toString().replace(/\s+/g,' ').trim().slice(0,1800)||'';
    // Somente texto pertencente ao conteúdo da aula.
    if(chosen&&doc?.getElementById('view-study')?.contains(picked.anchorNode)&&doc.getElementById('view-study').contains(picked.focusNode)){
-    selection=chosen;selectionStage=stageName();
+    selection=chosen;selectionStage=stageName();selectionStageId=stageId();
     action.hidden=false;
    }else if(!chosen){
     action.hidden=true;
@@ -49,7 +56,7 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
   }catch{}
  }
  function resetEditor(){
-  editingId=null;selection='';selectionStage='';
+  editingId=null;selection='';selectionStage='';selectionStageId='';
   editor.hidden=true;textarea.value='';quote.textContent='';
   action.hidden=true;
  }
@@ -101,7 +108,10 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
     writeNotes(updated);if(editingId===note.id)resetEditor();renderList();
     status.textContent='Anotação excluída neste dispositivo.';
    });
-   actions.append(edit,remove);card.append(head,cited,body,actions);list.append(card);
+   const central=document.createElement('button');central.type='button';
+   central.textContent='📝 Ver no caderno geral';
+   central.addEventListener('click',()=>{location.href='./index.html#notes'});
+   actions.append(central,edit,remove);card.append(head,cited,body,actions);list.append(card);
   }
  }
  save.addEventListener('click',()=>{
@@ -117,7 +127,7 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
    }else{
     if(!selection)throw Error('Selecione um trecho da aula primeiro.');
     const id=globalThis.crypto?.randomUUID?.()||'note-'+Date.now()+'-'+Math.random().toString(36).slice(2);
-    notes.push({id,courseId,stage:selectionStage||courseTitle,excerpt:selection,text,createdAt:when,updatedAt:when});
+    notes.push({id,courseId,stageId:selectionStageId,stage:selectionStage||courseTitle,excerpt:selection,text,createdAt:when,updatedAt:when});
    }
    writeNotes(notes);resetEditor();renderList();
    status.textContent='✅ Anotação salva neste dispositivo. Disponível para backup e sincronização.';
