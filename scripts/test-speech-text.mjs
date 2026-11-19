@@ -10,4 +10,11 @@ assert.deepEqual(splitScientificSentences('Segundo autor et al. a luz é importa
 assert.equal(prepareScientificSpeech('Fatores, água, e luz.'),'Fatores água e luz.');
 assert.equal(prepareScientificSpeech('Fatores, água, e luz.',{shortCommaPauses:false}),'Fatores, água e luz.');
 assert.equal(prepareScientificSpeech('Água,,, luz; temperatura.',''),'Água luz; temperatura.');
-console.log('Leitura científica: 9 verificações concluídas.');
+const paragraph='A vegetação do Cerrado apresenta adaptações que permitem à planta conservar água e sobreviver em longos períodos de estiagem, entre elas estão as raízes profundas e a redução da superfície das folhas, características muito importantes para esse ambiente.';
+const shortChunks=splitScientificSentences(paragraph);
+assert.ok(shortChunks.length>=2,'Parágrafos longos devem formar várias unidades de voz.');
+assert.ok(shortChunks.every(part=>part.length<=145),'Cada unidade de voz deve ter no máximo 145 caracteres.');
+assert.equal(shortChunks.join(' '),paragraph,'A divisão não deve apagar nem mudar palavras.');
+assert.deepEqual(splitScientificSentences('Água e luz. Solo e raízes.'),['Água e luz.','Solo e raízes.']);
+assert.deepEqual(splitScientificSentences('Segundo autor et al. a luz é importante.'),['Segundo autor et al. a luz é importante.']);
+console.log('Leitura científica: 14 verificações concluídas.');
