@@ -5,7 +5,26 @@
 <meta name="theme-color" content="#fafbf9"><title>EU SEREI BIOLOGO</title>
 <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="entry-pending">
+<section id="entry-gate" class="entry-gate" role="dialog" aria-modal="true" aria-labelledby="entry-title">
+ <div class="entry-panel">
+  <div class="entry-logo" aria-hidden="true">🌿</div>
+  <div class="entry-eyebrow">SEU ESPAÇO DE APRENDIZAGEM</div>
+  <h1 id="entry-title">EU SEREI BIÓLOGO</h1>
+  <p class="entry-description">Seu conhecimento acompanha você, no celular e no computador.</p>
+  <div class="entry-status" role="status" aria-live="polite">
+   <span id="entry-status-icon" aria-hidden="true">☁️</span>
+   <div><strong id="entry-status-title">Verificando conexão…</strong>
+    <p id="entry-status-message">Consultando a internet e a autorização do Google Drive.</p></div>
+  </div>
+  <div class="entry-actions">
+   <button id="entry-connect" type="button" class="entry-btn primary" disabled>☁️ Conectar e sincronizar</button>
+   <button id="entry-offline" type="button" class="entry-btn offline">📖 Continuar offline</button>
+  </div>
+  <p class="entry-footnote">Seu progresso é salvo neste dispositivo. A sincronização do Google Drive é opcional e pode ser ativada depois em Configurações.</p>
+  <p id="entry-feedback" class="entry-feedback" role="alert"></p>
+ </div>
+</section>
 <div class="app">
 <aside class="sidebar">
   <div class="brand"><span class="brand-icon">🌿</span><span>EU SEREI BIOLOGO<small>Seu espaço de aprendizagem</small></span></div>
