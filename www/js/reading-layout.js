@@ -127,10 +127,95 @@ export function initReadingLayout(frame){
    });
    if(nav)try{nav.click()}catch{}
  });
+
+ // Conclusão e avanço automático: observa o botão original do material privado.
+ // A navegação só acontece quando a marcação realmente foi salva no localStorage.
+ function bindAutoAdvance(doc){
+   const key='ecologia-vegetal-estudos-v1';
+   const stages=(()=>{
+     try{return JSON.parse(doc.getElementById('course-data')?.textContent||'{}').stages||[]}
+     catch{return []}
+   })();
+   if(!stages.length)return;
+   function currentStage(){
+     const view=doc.getElementById('view-study');
+     if(!view?.classList.contains('on'))return null;
+     const eyebrow=doc.getElementById('articleReader')?.querySelector('.eyebrow')?.textContent||'';
+     const m=eyebrow.match(/Etapa\\s+(\\d+)\\s+de\\s+\\d+/i);
+     if(!m)return null;
+     // Fallback para identificar a etapa na aula atualmente aberta.
+     const number=Number(m[1]);
+     const progress=readProgress();
+     const id=progress.lastStage;
+     if(id){
+       const ix=stages.findIndex(stage=>stage.id===id);
+       if(ix>=0&&Number(stages[ix].i||stages[ix].n||ix+1)===number)return {index:ix,id};
+     }
+     // Preferir correspondência pela aula e ordinal quando disponíveis.
+     const article=doc.getElementById('articleReader');
+     const title=article?.querySelector('h1,h2')?.textContent?.replace(/\\s+/g,' ').trim()||'';
+     const index=stages.findIndex(stage=>{
+       const name=String(stage.t||stage.title||stage.titulo||stage.name||'').replace(/\\s+/g,' ').trim();
+       return title.length>6&&name&&(title===name||title.includes(name)||name.includes(title));
+     });
+     return index>=0?{index,id:stages[index].id}:null;
+   }
+   function readProgress(){
+     try{return JSON.parse(localStorage.getItem(key)||'{}')||{}}
+     catch{return {}}
+   }
+   const finishLabel=element=>{
+     const text=(element.textContent||element.getAttribute('aria-label')||'').replace(/\\s+/g,' ').trim();
+     return /(?:concluir|finalizar)\\s+(?:esta\\s+|a\\s+)?etapa|marcar\\s+(?:como\\s+)?conclu[ií]d/i.test(text)&&
+       !/desfazer|cancelar|reabrir/i.test(text);
+   };
+   function openNext(currentIndex){
+     const next=stages[currentIndex+1];
+     if(!next)return; // Última etapa do curso: permanecer na conclusão.
+     const controls=[...doc.querySelectorAll('button,a,[role="button"]')];
+     // O botão de navegação original é sempre a primeira opção.
+     const nextControl=controls.find(el=>
+       !el.disabled&&/pr[oó]xima\\s+etapa|avan[cç]ar\\s+(?:para\\s+)?(?:a\\s+)?pr[oó]xima/i.test((el.textContent||'').replace(/\\s+/g,' ')));
+     if(nextControl){nextControl.click();return;}
+     // Alguns modelos retornam à grade de etapas após a conclusão.
+     const id=String(next.id||'');
+     const title=String(next.t||next.title||next.titulo||next.name||'').replace(/\\s+/g,' ').trim();
+     const possible=controls.filter(el=>{
+       if(el.disabled||el.closest('#articleReader'))return false;
+       if(id&&[el.dataset.stage,el.dataset.stageId,el.dataset.id].includes(id))return true;
+       const label=(el.textContent||'').replace(/\\s+/g,' ').trim();
+       return title.length>=8&&(label===title||label.startsWith(title+' '));
+     });
+     if(possible.length===1)possible[0].click();
+   }
+   let advancing=false;
+   doc.addEventListener('click',event=>{
+     const button=event.target?.closest?.('button,[role="button"],a');
+     if(advancing||!button||!finishLabel(button))return;
+     const current=currentStage();
+     if(!current||!current.id||!stages[current.index+1])return;
+     const before=!!readProgress().complete?.[current.id];
+     if(before)return;
+     advancing=true;
+     // O handler do documento original roda primeiro e persiste a conclusão.
+     // Três verificações cobrem salvamento síncrono e eventual atualização da UI.
+     let attempts=0;
+     const check=()=>{
+       if(readProgress().complete?.[current.id]){
+         advancing=false;
+         openNext(current.index);
+       }else if(++attempts<6){
+         setTimeout(check,150);
+       }else advancing=false; // Não navegar se não houve confirmação de gravação.
+     };
+     setTimeout(check,80);
+   },false);
+ }
  frame.addEventListener('load',()=>{
    observer?.disconnect();focus=false;lastStage='';manualNavigation=false;
    const doc=currentDoc(),view=doc?.getElementById('view-study');
    if(!view)return;
+   bindAutoAdvance(doc);
    let scheduled=false;
    const update=()=>{
      if(scheduled)return;scheduled=true;
