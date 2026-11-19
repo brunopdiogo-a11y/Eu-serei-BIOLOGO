@@ -110,6 +110,45 @@ header.reader-toolbar{flex:none;height:auto;min-height:55px}
 }
 .study-ai-visual-actions .study-ai-external-image-link{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;background:#eff7f0;color:#21683e;border:1px solid #cbe0d0;border-radius:10px;padding:10px 12px;min-height:40px;font-size:12px;font-weight:750}
 .study-ai-visual-actions .study-ai-external-image-link:hover{background:#dff0e3}
+
+/* Lembrete animado de estudo: surge da base, cresce e sobe pela lateral
+   sem ocupar o centro do material. Redução de movimento respeitada. */
+.study-clock-alert[hidden]{display:none!important}
+.study-clock-alert{
+ position:fixed;z-index:999995;
+ top:clamp(74px,14dvh,160px);right:clamp(8px,2vw,24px);
+ width:clamp(170px,23vw,224px);max-width:calc(100vw - 24px);
+ display:flex;flex-direction:column;align-items:center;gap:6px;
+ padding:15px 10px;border-radius:17px;
+ background:#fff9ed;border:2px solid #dfaf55;
+ color:#734614;box-shadow:0 12px 36px #49341647;
+ text-align:center;font:600 12px/1.3 system-ui;
+ transform-origin:bottom right;
+ animation:studyClockRise 5.8s cubic-bezier(.23,.8,.2,1) both;
+}
+.study-clock-alert-icon{font-size:32px;line-height:1.1}
+.study-clock-alert strong{font-size:15px;line-height:1.2}
+.study-clock-alert button{
+ width:100%;min-height:39px;border:0;border-radius:10px;
+ background:#23734c;color:white;font:750 12px system-ui;
+ cursor:pointer
+}
+@keyframes studyClockRise{
+ 0%{opacity:0;transform:translateY(72dvh) scale(.55)}
+ 14%{opacity:1;transform:translateY(42dvh) scale(.85)}
+ 34%{opacity:1;transform:translateY(0) scale(1.08)}
+ 48%,81%{opacity:1;transform:translateY(0) scale(1)}
+ 100%{opacity:0;transform:translateY(-15px) scale(.91)}
+}
+@media(max-width:650px){
+ .study-clock-alert{top:calc(env(safe-area-inset-top,0px) + 72px);right:8px;width:182px;padding:11px 9px}
+ .study-clock-alert-icon{font-size:25px}
+ .study-clock-alert strong{font-size:13px}
+}
+@media(prefers-reduced-motion:reduce){
+ .study-clock-alert{animation:studyClockFade 5.8s ease-in-out both}
+ @keyframes studyClockFade{0%,100%{opacity:0}12%,80%{opacity:1}}
+}
 </style></head><body>
 <header class="reader-toolbar"><a href="./index.html" class="reader-brand">← EU SEREI BIOLOGO</a><div class="reader-toolbar-actions"><button type="button" id="reading-chapters" class="quiet-control">📚 Estudos</button><span class="speech-header-actions"><button type="button" id="voice-toggle" class="quiet-control" aria-label="Ouvir o parágrafo selecionado">🔊 Ouvir</button><button type="button" id="voice-settings-toggle" class="quiet-control speech-settings" aria-expanded="false" aria-controls="voice-panel" aria-label="Configurações da narração" title="Configurações da narração">⚙</button></span><button type="button" id="study-note-selection" class="study-note-toolbar study-note-selection" hidden>✎ Anotar seleção</button><button type="button" id="study-note-list" class="study-note-toolbar">📝 Anotações</button><button class="lesson-plan-button" id="lesson-plan-toggle" aria-expanded="false">📅 Cronograma</button></div></header><aside id="lesson-plan-panel" class="lesson-plan-panel" hidden><div id="lesson-plan-summary"></div></aside>
 <section id="study-notes-panel" class="study-notes-panel" role="dialog" aria-label="Minhas anotações de Ecologia Vegetal" aria-hidden="true" hidden>
@@ -126,6 +165,12 @@ header.reader-toolbar{flex:none;height:auto;min-height:55px}
 </section>
 <div id="message" class="error">Abrindo material privado…</div>
 <iframe id="reader" class="reader hide" title="Aulas e atividades de Ecologia Vegetal" referrerpolicy="no-referrer"></iframe>
+<div id="study-clock-alert" class="study-clock-alert" role="status" aria-live="polite" hidden>
+  <span class="study-clock-alert-icon">⏱️</span>
+  <strong>Você está estudando!</strong>
+  <span>O cronômetro está pausado.</span>
+  <button type="button" id="study-clock-alert-start">▶ Iniciar agora</button>
+</div>
 <div class="clock hide collapsed" id="clock" aria-label="Cronômetro de estudo"><button type="button" class="clock-summary" id="clock-summary" aria-expanded="false" aria-controls="clock-actions"><span aria-hidden="true">⏱️</span><strong id="elapsed">00:00:00</strong><span class="clock-chevron" aria-hidden="true">⌃</span></button><span class="clock-reading-reminder" id="clock-reading-reminder" hidden>⚠️ Cronômetro pausado · estudando?</span><div class="clock-actions" id="clock-actions"><small id="clock-status">Pausado</small><div class="clock-actions-buttons"><button id="toggle">▶ Iniciar</button><button class="secondary" id="close-session">Salvar e sair</button></div><label class="background-option"><input id="background-study" type="checkbox"> ⏱️ Manter o cronômetro com a tela apagada</label><small class="background-note">Ative somente se continuar estudando ou ouvindo a aula. O tempo é salvo ao retornar; fechar a página encerra a sessão.</small></div></div>
 <section class="voice" id="voice-panel" aria-label="Preferências da narração" hidden>
   <button type="button" class="voice-close" id="voice-close" aria-label="Fechar preferências de voz">×</button>
@@ -214,6 +259,13 @@ function display(){const s=Math.floor(shownMs/1000);$('elapsed').textContent=[Ma
 const clock=$('clock');const clockSummary=$('clock-summary');
 let narrationPlaying=false,pausedActivityAt=0,reminderCleanup;
 let pausedReadingStatus=false;
+const clockAlert=$('study-clock-alert'),clockAlertStart=$('study-clock-alert-start');
+let clockAlertTimer=null;
+function hideClockAlert(){
+ clearTimeout(clockAlertTimer);clockAlertTimer=null;
+ clockAlert.hidden=true;
+}
+clockAlertStart.addEventListener('click',()=>{resume();hideClockAlert();});
 document.addEventListener('study:narration-state',e=>{
   const next=e.detail?.playing===true;
   narrationPlaying=next;
@@ -222,6 +274,7 @@ document.addEventListener('study:narration-state',e=>{
   else if(running){pause();}
 });
 function clearReadingReminder(){
+  hideClockAlert();
   clock.classList.remove('reminder-paused');
   pausedReadingStatus=false;
   clearTimeout(reminderCleanup);
@@ -245,6 +298,14 @@ function noteReadingActivity(frame){
   clock.classList.remove('reminder-paused');
   void clock.offsetWidth;
   clock.classList.add('reminder-paused');
+  // Exibe uma chamada maior que percorre a lateral, sem cobrir o texto central.
+  hideClockAlert();
+  clockAlert.hidden=false;
+  void clockAlert.offsetWidth;
+  clockAlert.style.animation='none';
+  void clockAlert.offsetWidth;
+  clockAlert.style.animation='';
+  clockAlertTimer=setTimeout(()=>{clockAlert.hidden=true;clockAlertTimer=null;},6000);
   pausedReadingStatus=true;
   clearTimeout(reminderCleanup);
   reminderCleanup=setTimeout(clearReadingReminder,6000);
