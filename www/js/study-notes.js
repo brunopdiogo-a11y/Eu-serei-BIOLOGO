@@ -136,7 +136,7 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
  cancel.addEventListener('click',resetEditor);
  action.addEventListener('pointerdown',event=>event.preventDefault());
  action.addEventListener('click',startNew);
- listButton.addEventListener('click',openPanel);
+ listButton.addEventListener('click',()=>{location.href='./index.html#notes'});
  close.addEventListener('click',closePanel);
  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!panel.hidden)closePanel()});
  function attach(){
