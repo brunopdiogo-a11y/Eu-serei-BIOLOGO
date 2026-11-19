@@ -148,3 +148,30 @@ input,select,textarea{max-width:100%}
 .notes-hub-item[role="link"]{cursor:pointer;transition:border-color .15s,background .15s}
 .notes-hub-item[role="link"]:hover{border-color:#8bc3a1;background:#f7fcf8}
 .notes-hub-item[role="link"]:focus-visible{outline:3px solid #8bc3a1;outline-offset:2px}
+
+/* Tela inicial de conexão: sem bloquear o uso offline. */
+.entry-gate[hidden]{display:none!important}
+body.entry-pending{overflow:hidden}
+body.entry-pending>.app,body.entry-pending>.bottom-nav{visibility:hidden}
+.entry-gate{position:fixed;inset:0;z-index:1000000;display:grid;place-items:center;overflow:auto;
+ padding:calc(env(safe-area-inset-top,0px) + 22px) 16px calc(env(safe-area-inset-bottom,0px) + 22px);
+ background:linear-gradient(145deg,#e8f4e9,#f9fcf7 50%,#e5f1e8)}
+.entry-panel{width:min(100%,430px);padding:clamp(23px,5vw,37px);background:#fff;border:1px solid #dceade;
+ border-radius:23px;box-shadow:0 20px 70px #16412c1e;text-align:center}
+.entry-logo{display:grid;place-items:center;width:66px;height:66px;margin:0 auto 19px;border-radius:19px;
+ background:#e9f4eb;font-size:36px}
+.entry-eyebrow{font-size:10px;letter-spacing:.13em;color:#528361;font-weight:850}
+.entry-panel h1{font-size:clamp(23px,5vw,30px);letter-spacing:-.045em;color:#24563a;margin:8px 0}
+.entry-description{color:#708074;font-size:13px;line-height:1.6;margin:0 0 22px}
+.entry-status{display:flex;gap:12px;align-items:center;text-align:left;padding:14px;background:#f4f8f4;
+ border:1px solid #e5eee5;border-radius:12px}
+.entry-status>span{font-size:25px}
+.entry-status strong{font-size:13px;color:#31583e}
+.entry-status p{margin:5px 0 0;font-size:12px;color:#758377;line-height:1.5}
+.entry-actions{display:grid;gap:10px;margin-top:20px}
+.entry-btn{border:0;border-radius:12px;min-height:49px;font-size:13px;font-weight:800;padding:12px 16px}
+.entry-btn.primary{background:#24764b;color:white}
+.entry-btn.offline{background:#f0f5f0;color:#34684b;border:1px solid #dbe7dc}
+.entry-footnote{font-size:11px;color:#879187;line-height:1.6;margin:17px 0 0}
+.entry-feedback{font-size:12px;color:#a24831;line-height:1.5;margin:10px 0 0}
+.entry-feedback:empty{display:none}
