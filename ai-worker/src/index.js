@@ -167,12 +167,46 @@ async function searchScientificImages(query){
   return {images:images.slice(0,6),terms};
 }
 
+
+// Provedor alternativo: API Gemini. A chave é um secret do Worker, nunca do navegador.
+async function answerWithGemini(env,history,text){
+  const model=String(env.GEMINI_MODEL||"gemini-2.5-flash");
+  if(!/^gemini-[a-z0-9.-]+$/.test(model))throw Error("Modelo Gemini configurado incorretamente.");
+  const contents=history.map(m=>({
+    role:m.role==="assistant"?"model":"user",
+    parts:[{text:m.content}]
+  }));
+  contents.push({role:"user",parts:[{text}]});
+  const response=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+
+    encodeURIComponent(model)+":generateContent",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","x-goog-api-key":env.GEMINI_API_KEY},
+    body:JSON.stringify({
+      systemInstruction:{parts:[{text:SYSTEM}]},
+      contents,
+      generationConfig:{temperature:0.3,maxOutputTokens:1100}
+    })
+  });
+  if(!response.ok){
+    const detail=await response.text();
+    const limited=response.status===429||/quota|resource_exhausted/i.test(detail);
+    if(limited)throw Error("GEMINI_LIMIT");
+    if(response.status===401||response.status===403)throw Error("GEMINI_AUTH");
+    throw Error("GEMINI_HTTP_"+response.status);
+  }
+  const body=await response.json();
+  const answer=(body.candidates?.[0]?.content?.parts||[])
+    .map(part=>typeof part.text==="string"?part.text:"").join("\n").trim();
+  if(!answer)throw Error("GEMINI_EMPTY");
+  return {answer:answer.slice(0,10000),model,provider:"gemini"};
+}
+
 export default {
   async fetch(request,env){
     const origin=request.headers.get("Origin")||"";
     const pathname=new URL(request.url).pathname;
     if(pathname==="/health"&&request.method==="GET"){
-      return respond({ok:true,service:"eusereibiologo-tutor",configured:!!(env.AI?.run&&env.STUDY_ACCESS_TOKEN?.length>=24)},200,origin);
+      return respond({ok:true,service:"eusereibiologo-tutor",configured:!!((env.AI?.run||env.GEMINI_API_KEY)&&env.STUDY_ACCESS_TOKEN?.length>=24),provider:env.GEMINI_API_KEY?"gemini":"cloudflare"},200,origin);
     }
     if(request.method==="OPTIONS"){
       return ORIGINS.has(origin)?new Response(null,{status:204,headers:cors(origin)}):respond({error:"Origem não permitida"},403,origin);
@@ -240,29 +274,34 @@ export default {
       "Pergunta do estudante: "+(question||"Explique o trecho selecionado de maneira clara e científica.")
     ].filter(Boolean).join("\n\n");
     try{
-      // O modelo é executado na infraestrutura Cloudflare e consome a
-      // franquia gratuita de Workers AI conforme os limites da conta.
-      const result=await env.AI.run(
-        env.AI_MODEL||"@cf/meta/llama-3.1-8b-instruct-fp8-fast",
-        {messages:[
-          {role:"system",content:SYSTEM},
-          ...history,
-          {role:"user",content:text}
-        ],max_tokens:700,temperature:0.35,stream:false}
-      );
+      // Gemini é priorizado quando seu secret está configurado. Sem ele,
+      // mantemos o modelo existente funcionando até a migração estar pronta.
+      if(env.GEMINI_API_KEY&&String(env.GEMINI_API_KEY).trim()){
+        const generated=await answerWithGemini(env,history,text);
+        return respond(generated,200,origin);
+      }
+      const model=env.AI_MODEL||"@cf/meta/llama-3.1-8b-instruct-fp8-fast";
+      const result=await env.AI.run(model,{
+        messages:[{role:"system",content:SYSTEM},...history,{role:"user",content:text}],
+        max_tokens:700,temperature:0.35,stream:false
+      });
       const answer=typeof result==="string"?result:
         typeof result?.response==="string"?result.response:
         typeof result?.result?.response==="string"?result.result.response:"";
       if(!answer.trim())return respond({error:"A IA não devolveu texto. Tente novamente."},502,origin);
-      return respond({answer:answer.slice(0,10000),model:env.AI_MODEL||"@cf/meta/llama-3.1-8b-instruct-fp8-fast"},200,origin);
+      return respond({answer:answer.slice(0,10000),model,provider:"cloudflare"},200,origin);
     }catch(e){
       // A cota diária gratuita pode ser atingida, sem gerar cobrança se a
       // conta permanecer no plano gratuito.
       const hint=String(e?.message||"").toLowerCase();
+      if(hint.includes("gemini_auth"))return respond({error:"A chave do Google Gemini não foi autorizada. Verifique GEMINI_API_KEY no Cloudflare."},502,origin);
+      if(hint.includes("gemini_limit"))return respond({error:"O limite de uso do Google Gemini foi atingido. Verifique sua cota."},429,origin);
+      if(hint.includes("gemini_http_"))return respond({error:"O Google Gemini não respondeu corretamente ("+hint.replace("gemini_http_","HTTP ")+")."},502,origin);
+      if(hint.includes("gemini_empty"))return respond({error:"O Google Gemini não retornou conteúdo de texto."},502,origin);
       const limited=/quota|limit|neuron|exceed|rate|429/.test(hint);
       return respond({error:limited?
         "A franquia gratuita do Cloudflare Workers AI pode ter sido atingida. Tente mais tarde.":
-        "Não foi possível consultar o Workers AI. Verifique modelo, binding ou disponibilidade."},limited?429:502,origin);
+        "Não foi possível consultar o motor de IA. Confira a configuração e a disponibilidade."},limited?429:502,origin);
     }
   }
 };
