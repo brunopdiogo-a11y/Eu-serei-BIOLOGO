@@ -35,9 +35,8 @@ public class NativeDriveAuthPlugin extends Plugin {
             Signature[] signatures;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 info = manager.getPackageInfo(getContext().getPackageName(), PackageManager.GET_SIGNING_CERTIFICATES);
-                signatures = info.signingInfo.hasMultipleSigners()
-                    ? info.signingInfo.getApkContentsSigners()
-                    : info.signingInfo.getSigningCertificateHistory();
+                // O OAuth usa o certificado que efetivamente assina o APK instalado.
+                signatures = info.signingInfo.getApkContentsSigners();
             } else {
                 info = manager.getPackageInfo(getContext().getPackageName(), PackageManager.GET_SIGNATURES);
                 signatures = info.signatures;
