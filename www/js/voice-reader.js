@@ -111,7 +111,7 @@ export function initStageSpeech(frame, root) {
         }),45000,'Reprodução da frase');
         if(session!==token||!active||paused)return;
         // Na tela ativa, as pausas entre frases seguem a hierarquia:
-        // vírgula (removida na cópia falada) < ponto-e-vírgula < ponto final.
+        // cortes de oração sem atraso artificial; ponto-e-vírgula < ponto final.
         // Não atrasamos com temporizadores em segundo plano para evitar
         // bloqueio pelos limites de execução do WebView Android.
         if(!document.hidden&&item.pause>0){
@@ -322,7 +322,7 @@ export function initStageSpeech(frame, root) {
     // de enviar o texto ao motor. O conteúdo acadêmico original não é alterado.
     const spoken=prepareScientificSpeech(text,speechOptions());
     return splitScientificSentences(spoken).filter(Boolean).map(phrase=>({
-      text:phrase,pause:/[.!?]$/.test(phrase)?180:80
+      text:phrase,pause:/[.!?]$/.test(phrase)?90:/;$/.test(phrase)?65:0
     }));
   }
   function frameStage(){
