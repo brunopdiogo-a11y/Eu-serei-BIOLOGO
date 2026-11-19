@@ -136,7 +136,7 @@ function loadGIS(){
   document.head.append(script);
  });
 }
-export async function connectDrive(clientId){
+export async function connectDrive(clientId,{silent=false}={}){
  const native=!!(window.Capacitor?.isNativePlatform?.()&&window.Capacitor?.getPlatform?.()==='android');
  if(native){
   // Android OAuth is granted by Google Play Services, never by GIS inside WebView.
@@ -144,7 +144,7 @@ export async function connectDrive(clientId){
    throw Error('Este APK ainda não contém o login Google nativo. Instale a versão atualizada, sem apagar os dados.');
   }
   const plugin=window.Capacitor.Plugins?.NativeDriveAuth||window.Capacitor.registerPlugin('NativeDriveAuth');
-  const result=await plugin.authorize();
+  const result=await plugin.authorize({silent});
   if(!result?.accessToken)throw Error('O Android não devolveu a autorização Google Drive.');
   token=result.accessToken;
   expiry=Date.now()+50*60*1000; // token temporário, não persistido
@@ -152,6 +152,7 @@ export async function connectDrive(clientId){
  }
  const id=String(clientId||'').trim();
  if(!/^[\w-]+\.apps\.googleusercontent\.com$/.test(id))throw Error('ID OAuth inválido. Use o Client ID Web (não o Client Secret).');
+ if(silent)throw Error('GOOGLE_INTERACTION_REQUIRED');
  await loadGIS();
  return new Promise((resolve,reject)=>{
   tokenClient=window.google.accounts.oauth2.initTokenClient({
