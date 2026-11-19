@@ -15,6 +15,7 @@
     <button data-view="planning" class="nav-link">📅 <span>Planejamento</span></button>
     <button data-view="questions" class="nav-link">🧠 <span>Questões</span></button>
     <button data-view="progress" class="nav-link">📊 <span>Progresso</span></button>
+    <button data-view="notes" class="nav-link">📝 <span>Anotações</span></button>
   </nav>
   <div class="sidebar-foot">Pequenos passos, aprendizado constante.</div>
 </aside>
@@ -90,6 +91,25 @@
   <div id="progress-metrics" class="metrics"></div>
   <section class="card"><h2>📚 Evolução por disciplina</h2><div id="progress-courses"></div></section>
 </section>
+<section class="view" id="view-notes">
+  <div class="page-heading"><div class="eyebrow">SEU CADERNO DE ESTUDOS</div><h1>📝 Anotações</h1><p>Todas as suas anotações, organizadas por disciplina. Abra uma anotação para voltar ao conteúdo de onde ela foi criada.</p></div>
+  <section class="card">
+    <div class="notes-toolbar">
+      <label class="field">Disciplina<select id="notes-course-filter"><option value="">Todas as disciplinas</option></select></label>
+      <label class="field">Pesquisar anotações<input type="search" id="notes-search" placeholder="Pesquisar palavra, trecho ou anotação..."></label>
+    </div>
+    <p class="muted" id="notes-summary"></p>
+    <div class="notes-collection" id="notes-collection"></div>
+    <p class="feedback" id="notes-feedback" role="status"></p>
+  </section>
+  <section class="card" id="notes-editor" hidden>
+    <h2>✎ Editar anotação</h2>
+    <p class="muted" id="notes-editor-origin"></p>
+    <blockquote id="notes-editor-excerpt" class="notes-excerpt"></blockquote>
+    <label class="field">Sua anotação<textarea id="notes-editor-text" rows="5" maxlength="5000"></textarea></label>
+    <div class="button-row"><button class="btn primary" id="notes-editor-save" type="button">Salvar alterações</button><button class="btn ghost" id="notes-editor-cancel" type="button">Cancelar</button></div>
+  </section>
+</section>
 <section class="view" id="view-settings">
   <div class="page-heading"><div class="eyebrow">PREFERÊNCIAS</div><h1>⚙️ Configurações</h1><p>Gerencie seus dados e acompanhe a futura sincronização entre dispositivos.</p></div>
   <section class="card" id="settings-notifications"><h2>🔔 Notificações inteligentes</h2>
@@ -154,6 +174,7 @@
 <button data-view="planning">📅<small>Planejar</small></button>
 <button data-view="questions">🧠<small>Questões</small></button>
 <button data-view="progress">📊<small>Progresso</small></button>
+<button data-view="notes">📝<small>Anotações</small></button>
 </nav>
 <div id="toast" role="status" aria-live="polite"></div>
 <script type="module" src="js/app.js"></script>
