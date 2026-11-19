@@ -33,27 +33,50 @@ export function prepareScientificSpeech(value, options={}){
   }
   return text.replace(/\s{2,}/gu,' ').trim();
 }
-export function splitScientificSentences(source){
-  const clean=String(source??'').replace(/\s+/gu,' ').trim();
+/**
+ * Fraciona a narração em unidades menores para TTS (web e Android).
+ * Mantém palavras intactas e preserva pontuação. No texto já preparado,
+ * algumas vírgulas podem ter sido suavizadas pelas preferências do usuário.
+ */
+export function splitScientificSentences(source,{maxChars=145}={}){
+  const clean=String(source??'').replace(/\\s+/gu,' ').trim();
   if(!clean)return [];
+  const limit=Math.max(70,Math.min(260,Number(maxChars)||145));
   const segments=[];
-  // Abreviações científicas comuns são protegidas contra cisão de frases.
-  const safe=clean.replace(/\b(p|pp|fig|prof|dr|dra|et al)\./giu,match=>match.replace('.','\u2024'));
-  const chunks=safe.match(/.*?(?:[!?;]+(?:["”’)]*)|(?<!\d)\.(?!\d)(?:["”’)]*)|$)(?=\s|$)/gu)?.filter(x=>x.trim())||[safe];
-  for(const chunk of chunks){
-    let restored=chunk.replace(/\u2024/gu,'.').trim();
-    if(!restored)continue;
-    if(restored.length<=320){segments.push(restored);continue;}
-    // Cortes longos somente em limites de palavras; preferir ponto-e-vírgula/vírgula.
-    let buffer='';
-    for(const token of restored.split(/(?<=,)\s+|\s+/gu)){
-      if(buffer && (buffer+' '+token).length>320){
-        segments.push(buffer);
-        buffer='';
+  // Evita tratar abreviações e números decimais como fim de frase.
+  const safe=clean.replace(/\\b(p|pp|fig|prof|dr|dra|et al)\\./giu,m=>m.replace('.','\\u2024'));
+  const chunks=safe.match(/.*?(?:[!?;]+(?:["”’)]*)|(?<!\\d)\\.(?!\\d)(?:["”’)]*)|$)(?=\\s|$)/gu)?.filter(x=>x.trim())||[safe];
+
+  function splitLong(sentence){
+    const result=[],words=sentence.trim().split(/\\s+/u);
+    let remaining=words;
+    while(remaining.length){
+      let length=0,last=0,best=0,bestScore=-1;
+      for(let n=0;n<remaining.length;n++){
+        const candidate=remaining[n];
+        const nextLength=length+(n?1:0)+candidate.length;
+        if(n>0&&nextLength>limit)break;
+        length=nextLength;last=n+1;
+        if(n===remaining.length-1)break;
+        const endsComma=/[,;:]$/.test(candidate);
+        const endsDash=/[–—]$/.test(candidate);
+        const target=limit*.76;
+        const score=(endsComma?80:endsDash?30:0)-Math.abs(length-target)/4;
+        if(length>=limit*.42&&score>bestScore){
+          best=n+1;bestScore=score;
+        }
       }
-      buffer+=(buffer?' ':'')+token;
+      const count=last===remaining.length?last:(best||last);
+      result.push(remaining.slice(0,count).join(' '));
+      remaining=remaining.slice(count);
     }
-    if(buffer)segments.push(buffer);
+    return result;
+  }
+  for(const chunk of chunks){
+    const sentence=chunk.replace(/\\u2024/gu,'.').trim();
+    if(!sentence)continue;
+    if(sentence.length<=limit){segments.push(sentence);continue;}
+    segments.push(...splitLong(sentence));
   }
   return segments;
 }
