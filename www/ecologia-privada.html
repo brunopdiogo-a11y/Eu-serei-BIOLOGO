@@ -153,10 +153,11 @@ header.reader-toolbar{flex:none;height:auto;min-height:55px}
 .study-note-return[hidden]{display:none!important}
 .study-note-return{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;background:#eaf5ed;border-bottom:1px solid #c6dfce;color:#255c3b;font:600 12px/1.5 system-ui}
 .study-note-return button{border:0;background:#d5ebda;border-radius:8px;padding:6px 10px;cursor:pointer;color:#255c3b}
+.study-notes-list[hidden]{display:none!important}.study-note-hub-link{color:#28754b;font-weight:750;font-size:12px;text-decoration:none;padding:10px 0}
 </style></head><body>
-<header class="reader-toolbar"><a href="./index.html" class="reader-brand">← EU SEREI BIOLOGO</a><div class="reader-toolbar-actions"><button type="button" id="reading-chapters" class="quiet-control">📚 Estudos</button><span class="speech-header-actions"><button type="button" id="voice-toggle" class="quiet-control" aria-label="Ouvir o parágrafo selecionado">🔊 Ouvir</button><button type="button" id="voice-settings-toggle" class="quiet-control speech-settings" aria-expanded="false" aria-controls="voice-panel" aria-label="Configurações da narração" title="Configurações da narração">⚙</button></span><button type="button" id="study-note-selection" class="study-note-toolbar study-note-selection" hidden>✎ Anotar seleção</button><button type="button" id="study-note-list" class="study-note-toolbar">📝 Anotações</button><button class="lesson-plan-button" id="lesson-plan-toggle" aria-expanded="false">📅 Cronograma</button></div></header><aside id="lesson-plan-panel" class="lesson-plan-panel" hidden><div id="lesson-plan-summary"></div></aside>
+<header class="reader-toolbar"><a href="./index.html" class="reader-brand">← EU SEREI BIOLOGO</a><div class="reader-toolbar-actions"><button type="button" id="reading-chapters" class="quiet-control">📚 Estudos</button><span class="speech-header-actions"><button type="button" id="voice-toggle" class="quiet-control" aria-label="Ouvir o parágrafo selecionado">🔊 Ouvir</button><button type="button" id="voice-settings-toggle" class="quiet-control speech-settings" aria-expanded="false" aria-controls="voice-panel" aria-label="Configurações da narração" title="Configurações da narração">⚙</button></span><button type="button" id="study-note-selection" class="study-note-toolbar study-note-selection" hidden>✎ Anotar seleção</button><button type="button" id="study-note-list" class="study-note-toolbar">📝 Caderno</button><button class="lesson-plan-button" id="lesson-plan-toggle" aria-expanded="false">📅 Cronograma</button></div></header><aside id="lesson-plan-panel" class="lesson-plan-panel" hidden><div id="lesson-plan-summary"></div></aside>
 <section id="study-notes-panel" class="study-notes-panel" role="dialog" aria-label="Minhas anotações de Ecologia Vegetal" aria-hidden="true" hidden>
-  <div class="study-notes-heading"><div><strong>📝 Minhas anotações</strong><small id="study-notes-count">Nenhuma anotação</small></div><button type="button" id="study-notes-close" aria-label="Fechar anotações">✕</button></div>
+  <div class="study-notes-heading"><div><strong>✎ Anotar trecho</strong><small id="study-notes-count">Caderno geral disponível no menu</small></div><button type="button" id="study-notes-close" aria-label="Fechar anotações">✕</button></div>
   <div id="study-note-editor" class="study-note-editor" hidden>
     <label>Trecho selecionado</label><blockquote id="study-note-excerpt"></blockquote>
     <label for="study-note-body">Sua anotação</label>
@@ -164,7 +165,8 @@ header.reader-toolbar{flex:none;height:auto;min-height:55px}
     <div class="study-note-buttons"><button type="button" id="study-note-save">Salvar anotação</button><button type="button" id="study-note-cancel">Cancelar</button></div>
   </div>
   <p id="study-notes-status" role="status"></p>
-  <div id="study-notes-list" class="study-notes-list"></div>
+  <div id="study-notes-list" class="study-notes-list" hidden></div>
+  <a class="study-note-hub-link" href="./index.html#notes">📝 Ver todas as anotações no caderno</a>
   <p class="study-note-privacy">As notas ficam neste dispositivo e participam do backup e da sincronização Google Drive quando autorizada.</p>
 </section>
 <div id="study-note-return" class="study-note-return" role="status" hidden>
