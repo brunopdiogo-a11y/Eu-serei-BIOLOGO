@@ -149,6 +149,10 @@ header.reader-toolbar{flex:none;height:auto;min-height:55px}
  .study-clock-alert{animation:studyClockFade 5.8s ease-in-out both}
  @keyframes studyClockFade{0%,100%{opacity:0}12%,80%{opacity:1}}
 }
+
+.study-note-return[hidden]{display:none!important}
+.study-note-return{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;background:#eaf5ed;border-bottom:1px solid #c6dfce;color:#255c3b;font:600 12px/1.5 system-ui}
+.study-note-return button{border:0;background:#d5ebda;border-radius:8px;padding:6px 10px;cursor:pointer;color:#255c3b}
 </style></head><body>
 <header class="reader-toolbar"><a href="./index.html" class="reader-brand">← EU SEREI BIOLOGO</a><div class="reader-toolbar-actions"><button type="button" id="reading-chapters" class="quiet-control">📚 Estudos</button><span class="speech-header-actions"><button type="button" id="voice-toggle" class="quiet-control" aria-label="Ouvir o parágrafo selecionado">🔊 Ouvir</button><button type="button" id="voice-settings-toggle" class="quiet-control speech-settings" aria-expanded="false" aria-controls="voice-panel" aria-label="Configurações da narração" title="Configurações da narração">⚙</button></span><button type="button" id="study-note-selection" class="study-note-toolbar study-note-selection" hidden>✎ Anotar seleção</button><button type="button" id="study-note-list" class="study-note-toolbar">📝 Anotações</button><button class="lesson-plan-button" id="lesson-plan-toggle" aria-expanded="false">📅 Cronograma</button></div></header><aside id="lesson-plan-panel" class="lesson-plan-panel" hidden><div id="lesson-plan-summary"></div></aside>
 <section id="study-notes-panel" class="study-notes-panel" role="dialog" aria-label="Minhas anotações de Ecologia Vegetal" aria-hidden="true" hidden>
@@ -163,6 +167,10 @@ header.reader-toolbar{flex:none;height:auto;min-height:55px}
   <div id="study-notes-list" class="study-notes-list"></div>
   <p class="study-note-privacy">As notas ficam neste dispositivo e participam do backup e da sincronização Google Drive quando autorizada.</p>
 </section>
+<div id="study-note-return" class="study-note-return" role="status" hidden>
+  <span id="study-note-return-text"></span>
+  <button type="button" id="study-note-return-close" aria-label="Dispensar aviso">✕</button>
+</div>
 <div id="message" class="error">Abrindo material privado…</div>
 <iframe id="reader" class="reader hide" title="Aulas e atividades de Ecologia Vegetal" referrerpolicy="no-referrer"></iframe>
 <div id="study-clock-alert" class="study-clock-alert" role="status" aria-live="polite" hidden>
@@ -310,6 +318,72 @@ function noteReadingActivity(frame){
   clearTimeout(reminderCleanup);
   reminderCleanup=setTimeout(clearReadingReminder,6000);
 }
+/* Retorno às anotações: usa o identificador real da etapa quando disponível.
+   Material privado permanece local e o texto não é modificado. */
+function initNoteReturn(frame){
+ const KEY='eusereibiologo-open-note-v1';
+ let context=null;
+ try{
+  if(new URLSearchParams(location.search).get('from')!=='notes')return;
+  context=JSON.parse(sessionStorage.getItem(KEY)||'null');
+  sessionStorage.removeItem(KEY);
+ }catch{return;}
+ if(!context||context.courseId!=='ecologia-vegetal')return;
+ const bar=$('study-note-return'),line=$('study-note-return-text');
+ const label=context.stage||'etapa desta anotação';
+ bar.hidden=false;
+ line.textContent='📝 Voltando para: '+label+'.';
+ $('study-note-return-close').addEventListener('click',()=>{bar.hidden=true});
+ frame.addEventListener('load',()=>{
+  const doc=frame.contentDocument;
+  const id=String(context.stageId||'');
+  const excerpt=String(context.excerpt||'').trim();
+  let stages=[];
+  try{stages=JSON.parse(doc.getElementById('course-data')?.textContent||'{}').stages||[]}catch{}
+  const matching=stages.find(s=>s.id===id);
+  const stageLabel=String(matching?.t||matching?.title||matching?.titulo||matching?.name||'').trim();
+  // Identificadores legados: o nome da etapa e uma citação são usados como referência.
+  const targetTitle=stageLabel||String(context.stage||'').split(' — ').at(-1).trim();
+  const all=[...doc.querySelectorAll('button,a,[role="button"],[data-stage],[data-stage-id],[onclick]')];
+  const matches=all.filter(el=>{
+   const attrs=[el.getAttribute('data-stage'),el.getAttribute('data-stage-id'),el.getAttribute('data-id')];
+   if(id&&attrs.includes(id))return true;
+   const label=(el.textContent||'').replace(/\\s+/g,' ').trim();
+   return targetTitle.length>=8&&(label===targetTitle||label.startsWith(targetTitle+' '));
+  });
+  const choose=matches.find(el=>!el.disabled);
+  if(choose){
+   try{choose.click()}catch{}
+  }
+  const article=doc.getElementById('articleReader');
+  const isCorrectStage=()=>{
+   if(!doc.getElementById('view-study')?.classList.contains('on'))return false;
+   const stored=JSON.parse(localStorage.getItem('ecologia-vegetal-estudos-v1')||'{}');
+   return id&&stored.lastStage===id||targetTitle&&article?.textContent?.includes(targetTitle);
+  };
+  let checked=0;
+  const inspect=()=>{
+   if(isCorrectStage()){
+    line.textContent='📝 Etapa da anotação aberta: '+label+'.';
+    if(excerpt){
+     const source=[...article.querySelectorAll('p,li,blockquote')].find(el=>el.textContent?.includes(excerpt.slice(0,75)));
+     if(source){
+      source.style.scrollMarginTop='90px';
+      source.scrollIntoView({block:'center',behavior:'smooth'});
+      source.classList.add('study-note-return-highlight');
+      if(!doc.getElementById('study-note-return-css')){
+       const css=doc.createElement('style');css.id='study-note-return-css';
+       css.textContent='.study-note-return-highlight{outline:2px solid #4d9b67!important;outline-offset:5px;background:#e6f4e9!important;border-radius:5px}';
+       doc.head.append(css);
+      }
+     }
+    }
+   }else if(++checked<5){setTimeout(inspect,300);}
+   else{line.textContent='📝 '+label+'. Selecione essa etapa em Estudos para consultar a anotação. O trecho permanece salvo no caderno.';}
+  };
+  setTimeout(inspect,160);
+ },{once:true});
+}
 function watchReaderActivity(frame){
   const attach=()=>{
     try{
@@ -361,7 +435,7 @@ window.addEventListener('pagehide',pause);
 try{
  const entry=await readEcologia();if(!entry)throw Error('Material não encontrado. Volte à biblioteca e importe o HTML completo de Ecologia Vegetal.');
  // Documento escolhido pelo usuário, não publicado no GitHub.
- const frame=$('reader');watchReaderActivity(frame);initStudyQuestions(frame);initStudyNotes(frame);initStageSpeech(frame,$('voice-panel'));bindLessonPlanning(frame);initReadingLayout(frame);frame.srcdoc=entry.html;frame.classList.remove('hide');$('clock').classList.remove('hide');$('message').remove();display();
+ const frame=$('reader');initNoteReturn(frame);watchReaderActivity(frame);initStudyQuestions(frame);initStudyNotes(frame);initStageSpeech(frame,$('voice-panel'));bindLessonPlanning(frame);initReadingLayout(frame);frame.srcdoc=entry.html;frame.classList.remove('hide');$('clock').classList.remove('hide');$('message').remove();display();
  // O estudante inicia a contagem manualmente no botão Iniciar.
  // Ao ocultar, fechar a aba ou sair da página, a sessão é pausada e registrada.
 }catch(err){$('message').textContent='Não foi possível abrir: '+err.message;}
