@@ -144,3 +144,7 @@ input,select,textarea{max-width:100%}
 .notes-hub-item .button-row{margin:0}
 #notes-editor[hidden]{display:none}
 @media(max-width:650px){.notes-toolbar{grid-template-columns:minmax(0,1fr)}.notes-hub-item{padding:12px}}
+
+.notes-hub-item[role="link"]{cursor:pointer;transition:border-color .15s,background .15s}
+.notes-hub-item[role="link"]:hover{border-color:#8bc3a1;background:#f7fcf8}
+.notes-hub-item[role="link"]:focus-visible{outline:3px solid #8bc3a1;outline-offset:2px}
