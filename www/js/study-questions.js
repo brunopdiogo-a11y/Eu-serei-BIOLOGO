@@ -241,7 +241,7 @@ export function initStudyQuestions(frame){
         const prompt=['Estou estudando Ciências Biológicas na disciplina Ecologia Vegetal.',
           'Minha pergunta: '+question,
           excerpt?'Trecho selecionado do material de estudo: '+excerpt:'',
-          'Explique o assunto didaticamente e, quando útil, encontre imagens reais, ilustrações ou diagramas de fontes confiáveis na internet, com links das fontes.'].filter(Boolean).join('\\n\\n');
+          'Explique o assunto didaticamente e, quando útil, encontre imagens reais, ilustrações ou diagramas de fontes confiáveis na internet, com links das fontes.'].filter(Boolean).join('\n\n');
         // O parâmetro q é uma conveniência não documentada: pode não preencher a pergunta.
         // Nunca enviamos automaticamente conteúdo para uma conta externa.
         openChatGPT.href='https://chatgpt.com/?q='+encodeURIComponent(prompt.slice(0,2400));
