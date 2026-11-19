@@ -207,7 +207,7 @@ export default {
     const origin=request.headers.get("Origin")||"";
     const pathname=new URL(request.url).pathname;
     if(pathname==="/health"&&request.method==="GET"){
-      return respond({ok:true,service:"eusereibiologo-tutor",configured:!!((env.AI?.run||env.GEMINI_API_KEY)&&env.STUDY_ACCESS_TOKEN?.length>=24),provider:env.GEMINI_API_KEY?"gemini":"cloudflare"},200,origin);
+      return respond({ok:true,service:"eusereibiologo-tutor",configured:!!((env.AI?.run||env.GEMINI_API_KEY)&&env.STUDY_ACCESS_TOKEN?.length>=24),provider:env.GEMINI_API_KEY?"gemini":"cloudflare",model:env.GEMINI_API_KEY?(env.GEMINI_MODEL||"gemini-3.5-flash-lite"):(env.AI_MODEL||"llama")},200,origin);
     }
     if(request.method==="OPTIONS"){
       return ORIGINS.has(origin)?new Response(null,{status:204,headers:cors(origin)}):respond({error:"Origem não permitida"},403,origin);
