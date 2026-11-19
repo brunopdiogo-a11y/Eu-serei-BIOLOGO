@@ -38,10 +38,10 @@ export function prepareScientificSpeech(value, options={}){
  * Mantém palavras intactas e preserva pontuação. No texto já preparado,
  * algumas vírgulas podem ter sido suavizadas pelas preferências do usuário.
  */
-export function splitScientificSentences(source,{maxChars=145}={}){
+export function splitScientificSentences(source,{maxChars=105}={}){
   const clean=String(source??'').replace(/\s+/gu,' ').trim();
   if(!clean)return [];
-  const limit=Math.max(70,Math.min(260,Number(maxChars)||145));
+  const limit=Math.max(70,Math.min(260,Number(maxChars)||105));
   const segments=[];
   // Evita tratar abreviações e números decimais como fim de frase.
   const safe=clean.replace(/\b(p|pp|fig|prof|dr|dra|et al)\./giu,m=>m.replace('.','\u2024'));
