@@ -392,6 +392,71 @@ if(nativeGoogleDrive){
 }
 
 let driveModule=null,autoSyncEnabled=false,autoTimer=null,autoInProgress=false,queuedChanges=false;
+/* Entrada inteligente: verificação silenciosa no Android; escolha explícita
+   entre sincronizar e estudar offline. Nunca bloqueia acesso por falta de rede. */
+const gate=$('entry-gate'),gateConnect=$('entry-connect'),gateOffline=$('entry-offline');
+const gateTitle=$('entry-status-title'),gateMessage=$('entry-status-message'),gateIcon=$('entry-status-icon'),gateFeedback=$('entry-feedback');
+let gateFinished=false;
+function gateStatus(icon,title,message){gateIcon.textContent=icon;gateTitle.textContent=title;gateMessage.textContent=message;}
+function enterApp(){
+ if(gateFinished)return;
+ gateFinished=true;document.body.classList.remove('entry-pending');
+ gate.hidden=true;
+ state=readState();render();fillPlan();
+}
+function gateError(error){
+ const message=String(error?.message||error||'Falha na conexão.');
+ gateFeedback.textContent='⚠️ '+message+' Você pode continuar offline sem perder seus dados.';
+ gateStatus('⚠️','Conexão não concluída','Seus estudos permanecem disponíveis neste dispositivo.');
+ gateConnect.disabled=!navigator.onLine;
+}
+async function authorizeAndEnter({silent=false}={}){
+ if(!navigator.onLine){gateStatus('📴','Sem internet','Continue offline. Seu progresso ficará salvo no dispositivo.');gateConnect.disabled=true;return false;}
+ try{
+  gateConnect.disabled=true;gateFeedback.textContent='';
+  gateStatus('☁️','Conectando ao Google Drive…','Verificando a autorização e buscando seu progresso.');
+  driveModule=await import('./google-drive-sync.js');
+  await driveModule.connectDrive(gdInput.value.trim(),{silent});
+  if(!nativeGoogleDrive)localStorage.setItem('eu-serei-biologo-google-client-id',gdInput.value.trim());
+  gdSync.disabled=false;gdDisconnect.disabled=false;
+  autoSyncEnabled=true;
+  // Antes de liberar o painel, trazer o progresso mais recente da nuvem.
+  await runCloudSync(false);
+  if(!autoSyncEnabled)throw Error(gdStatus.textContent);
+  enterApp();return true;
+ }catch(error){
+  if(silent&&String(error?.message||'').includes('GOOGLE_INTERACTION_REQUIRED')){
+   gateStatus('🔐','Sua conta precisa de confirmação','Conecte ao Google para sincronizar ou continue offline.');
+   gateConnect.disabled=false;return false;
+  }
+  gateError(error);return false;
+ }
+}
+gateOffline.addEventListener('click',()=>{
+ autoSyncEnabled=false;clearTimeout(autoTimer);
+ enterApp();
+});
+gateConnect.addEventListener('click',()=>{void authorizeAndEnter();});
+window.addEventListener('online',()=>{
+ if(!gateFinished){gateConnect.disabled=false;gateStatus('☁️','Internet disponível','Conecte ao Google Drive ou continue offline.');}
+});
+window.addEventListener('offline',()=>{
+ if(!gateFinished){gateConnect.disabled=true;gateStatus('📴','Sem internet','Continue offline. Seus dados permanecem salvos neste dispositivo.');}
+});
+async function initializeEntry(){
+ if(!navigator.onLine){
+  gateStatus('📴','Sem internet','Continue offline. Ao reconectar, use a sincronização em Configurações.');
+  gateConnect.disabled=true;return;
+ }
+ gateConnect.disabled=false;
+ if(nativeGoogleDrive){
+  // Google Play Services não apresenta consentimento no modo silencioso.
+  await authorizeAndEnter({silent:true});
+ }else{
+  gateStatus('☁️','Internet disponível','Conecte sua conta para recuperar o progresso ou continue offline.');
+ }
+}
+
 function syncStatus(message){gdStatus.textContent=message;}
 function scheduleCloudSync(delay=2500){
  if(!autoSyncEnabled||!driveModule?.connected()||!navigator.onLine)return;
@@ -469,3 +534,4 @@ function openDeepLink(){
 }
 window.addEventListener('hashchange',openDeepLink);
 openDeepLink();
+void initializeEntry();
