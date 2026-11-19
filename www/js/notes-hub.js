@@ -95,6 +95,10 @@ export function initNotesHub({courses,onChanged}){
   for(const entry of rows){
    const {note}=entry;
    const card=document.createElement('article');card.className='notes-hub-item';
+   card.tabIndex=0;card.setAttribute('role','link');
+   card.setAttribute('aria-label','Abrir conteúdo: '+entry.courseName+' — '+(note.stage||'Anotação'));
+   card.addEventListener('click',event=>{if(!event.target.closest('button,a,input'))contentTarget(entry)});
+   card.addEventListener('keydown',event=>{if((event.key==='Enter'||event.key===' ')&&event.target===card){event.preventDefault();contentTarget(entry)}});
    const label=document.createElement('div');label.className='notes-hub-label';
    label.textContent=entry.courseName+' · '+(note.stage||'Etapa não identificada');
    const quoted=document.createElement('blockquote');quoted.className='notes-excerpt';
@@ -102,11 +106,12 @@ export function initNotesHub({courses,onChanged}){
    const body=document.createElement('p');body.textContent=note.text||'';
    const actions=document.createElement('div');actions.className='button-row';
    const open=document.createElement('button');open.className='btn primary';open.type='button';
-   open.textContent='📖 Abrir conteúdo';open.addEventListener('click',()=>contentTarget(entry));
+   open.textContent='📖 Abrir conteúdo';open.addEventListener('click',event=>{event.stopPropagation();contentTarget(entry)});
    const edit=document.createElement('button');edit.className='btn secondary';edit.type='button';
-   edit.textContent='✎ Editar';edit.addEventListener('click',()=>startEdit(entry));
+   edit.textContent='✎ Editar';edit.addEventListener('click',event=>{event.stopPropagation();startEdit(entry)});
    const remove=document.createElement('button');remove.className='btn ghost';remove.type='button';
-   remove.textContent='Excluir';remove.addEventListener('click',()=>{
+   remove.textContent='Excluir';remove.addEventListener('click',event=>{
+    event.stopPropagation();
     if(!confirm('Excluir esta anotação?'))return;
     try{
      const data=read(entry.courseId),when=new Date().toISOString();
