@@ -383,6 +383,13 @@ export function initStudyQuestions(frame){
       const body=await res.json().catch(()=>({}));
       if(!res.ok)throw Error(body.error||'Não foi possível consultar o tutor.');
       if(typeof body.answer!=='string'||!body.answer.trim())throw Error('Resposta vazia da IA.');
+      if(body.provider==='gemini'){
+        connectionChip.textContent='● IA conectada · Gemini';
+        connectionChip.classList.add('is-connected');
+      }else if(body.provider==='cloudflare'){
+        connectionChip.textContent='● IA conectada · Cloudflare';
+        connectionChip.classList.add('is-connected');
+      }
       const imageIntent=/imagem|imagens|ilustra|figura|foto|micrografia|mostr[ea]/i.test(next.text);
       const imageTopic=/criptas?\s+estom[aá]tic|est[oô]mato/i.test(next.text+' '+next.excerpt)
         ?'stomatal crypt Nerium oleander':next.text.slice(0,160);
