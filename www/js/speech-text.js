@@ -39,16 +39,16 @@ export function prepareScientificSpeech(value, options={}){
  * algumas vírgulas podem ter sido suavizadas pelas preferências do usuário.
  */
 export function splitScientificSentences(source,{maxChars=145}={}){
-  const clean=String(source??'').replace(/\\s+/gu,' ').trim();
+  const clean=String(source??'').replace(/\s+/gu,' ').trim();
   if(!clean)return [];
   const limit=Math.max(70,Math.min(260,Number(maxChars)||145));
   const segments=[];
   // Evita tratar abreviações e números decimais como fim de frase.
-  const safe=clean.replace(/\\b(p|pp|fig|prof|dr|dra|et al)\\./giu,m=>m.replace('.','\\u2024'));
-  const chunks=safe.match(/.*?(?:[!?;]+(?:["”’)]*)|(?<!\\d)\\.(?!\\d)(?:["”’)]*)|$)(?=\\s|$)/gu)?.filter(x=>x.trim())||[safe];
+  const safe=clean.replace(/\b(p|pp|fig|prof|dr|dra|et al)\./giu,m=>m.replace('.','\u2024'));
+  const chunks=safe.match(/.*?(?:[!?;]+(?:["”’)]*)|(?<!\d)\.(?!\d)(?:["”’)]*)|$)(?=\s|$)/gu)?.filter(x=>x.trim())||[safe];
 
   function splitLong(sentence){
-    const result=[],words=sentence.trim().split(/\\s+/u);
+    const result=[],words=sentence.trim().split(/\s+/u);
     let remaining=words;
     while(remaining.length){
       let length=0,last=0,best=0,bestScore=-1;
@@ -73,7 +73,7 @@ export function splitScientificSentences(source,{maxChars=145}={}){
     return result;
   }
   for(const chunk of chunks){
-    const sentence=chunk.replace(/\\u2024/gu,'.').trim();
+    const sentence=chunk.replace(/\u2024/gu,'.').trim();
     if(!sentence)continue;
     if(sentence.length<=limit){segments.push(sentence);continue;}
     segments.push(...splitLong(sentence));
