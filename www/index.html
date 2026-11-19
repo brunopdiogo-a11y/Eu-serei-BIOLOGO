@@ -122,6 +122,16 @@
   </label>
   <p class="muted" id="google-oauth-web-help">O Client ID identifica a plataforma e não é uma senha. Não cole aqui um Client Secret nem arquivos de credenciais.</p>
   <p class="muted" id="google-oauth-android-help" hidden>📱 No APK, a autorização será solicitada pelo Google Play Services, sem navegador incorporado e sem ID OAuth Web. É necessário cadastrar um cliente OAuth do tipo Android no mesmo projeto Google Cloud, com pacote <code>br.com.eusereibiologo.app</code> e o SHA-1 da assinatura do APK.</p>
+  <div id="google-android-diagnostics" class="card" hidden style="margin:12px 0;padding:14px;border:1px solid #cfdfd2">
+    <strong>🔐 Identificação OAuth deste APK</strong>
+    <p class="muted" style="margin:7px 0">Use estes dados públicos para cadastrar um cliente do tipo <strong>Android</strong> no Google Cloud. A impressão digital é calculada no APK instalado.</p>
+    <div class="field">Pacote Android: <code id="google-android-package">Consultando…</code></div>
+    <div class="field">SHA-1 da assinatura: <code id="google-android-sha1" style="overflow-wrap:anywhere">Consultando…</code></div>
+    <p id="google-android-play-services" class="muted"></p>
+    <button type="button" class="btn secondary" id="google-android-copy-sha1">📋 Copiar SHA-1</button>
+    <a href="https://console.cloud.google.com/auth/clients" target="_blank" rel="noopener noreferrer">Abrir clientes OAuth no Google Cloud</a>
+    <p class="muted">Selecione o mesmo projeto utilizado no computador. Se o aplicativo estiver em teste, adicione sua conta em Google Auth Platform → Público-alvo → Usuários de teste. Não compartilhe chaves nem tokens.</p>
+  </div>
   <div class="button-row">
     <button class="btn secondary" id="google-connect">🔐 Conectar Google</button>
     <button class="btn primary" id="google-sync" disabled>🔄 Sincronizar agora</button>
