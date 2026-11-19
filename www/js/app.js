@@ -351,6 +351,34 @@ const gdInput=$('google-client-id'),gdConnect=$('google-connect'),gdSync=$('goog
 gdInput.value=localStorage.getItem('eu-serei-biologo-google-client-id')||'';
 const nativeGoogleDrive=!!(window.Capacitor?.isNativePlatform?.()&&window.Capacitor?.getPlatform?.()==='android');
 if(nativeGoogleDrive){
+ const panel=$('google-android-diagnostics'),sha1=$('google-android-sha1');
+ if(panel)panel.hidden=false;
+ const diagnostics=async()=>{
+  try{
+   if(!window.Capacitor?.isPluginAvailable?.('NativeDriveAuth'))throw Error('Plugin nativo indisponível. Instale o APK atualizado.');
+   const plugin=window.Capacitor.Plugins?.NativeDriveAuth||window.Capacitor.registerPlugin('NativeDriveAuth');
+   if(typeof plugin.diagnostics!=='function')throw Error('Esta versão do APK ainda não possui o diagnóstico da assinatura.');
+   const data=await plugin.diagnostics();
+   $('google-android-package').textContent=data.packageName||'Não identificado';
+   sha1.textContent=data.sha1||'Não identificado';
+   $('google-android-play-services').textContent=data.playServicesAvailable
+    ?'✅ Google Play Services disponível.'
+    :'⚠️ Google Play Services indisponível ou desatualizado (código '+data.playServicesStatus+').';
+  }catch(error){
+   sha1.textContent='⚠️ '+(error?.message||String(error));
+  }
+ };
+ void diagnostics();
+ $('google-android-copy-sha1')?.addEventListener('click',async()=>{
+  const sha=sha1?.textContent||'';
+  if(!/^(?:[A-F0-9]{2}:){19}[A-F0-9]{2}$/.test(sha)){
+   syncStatus('⚠️ SHA-1 ainda indisponível. Confira se o APK está atualizado.');return;
+  }
+  try{await navigator.clipboard.writeText(sha);syncStatus('✅ SHA-1 copiado. Cole no cliente OAuth Android do Google Cloud.');}
+  catch{syncStatus('Não foi possível copiar automaticamente; selecione o SHA-1 na tela.');}
+ });
+}
+if(nativeGoogleDrive){
  const label=gdInput.closest('label');
  if(label)label.hidden=true;
  const info=document.getElementById('google-oauth-web-help');
@@ -406,7 +434,7 @@ gdConnect.addEventListener('click',async()=>{
   gdSync.disabled=false;gdDisconnect.disabled=false;
   syncStatus('✅ Conta autorizada. Clique em Sincronizar agora para iniciar a sincronização automática desta sessão.');
  }catch(err){
-  syncStatus('⚠️ '+(err?.message||String(err))+(nativeGoogleDrive?' Verifique o cliente OAuth Android no Google Cloud (pacote e SHA-1 do APK).':' Verifique as origens do cliente OAuth Web.'));
+  syncStatus('⚠️ '+(err?.message||String(err))+(nativeGoogleDrive?' Compare o pacote e SHA-1 exibidos acima com o cliente OAuth Android, confira o usuário de teste e o Google Play Services.':' Verifique as origens do cliente OAuth Web.'));
   gdSync.disabled=true;gdDisconnect.disabled=true;
  }finally{gdConnect.disabled=false;}
 });
