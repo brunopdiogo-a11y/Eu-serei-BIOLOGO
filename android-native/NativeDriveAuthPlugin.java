@@ -61,6 +61,8 @@ public class NativeDriveAuthPlugin extends Plugin {
     @PluginMethod
     public void authorize(PluginCall call) {
         Intent intent = new Intent(getContext(), NativeDriveAuthActivity.class);
+        // Verificação silenciosa: nunca abrir a tela de consentimento durante a entrada.
+        intent.putExtra("silent", call.getBoolean("silent", false));
         startActivityForResult(call, intent, "onAuthorized");
     }
 
