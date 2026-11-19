@@ -1,6 +1,7 @@
 import {courses} from './data.js';
 import {readState,writeState,exportState,importState} from './storage.js';
 import {renderStudyDashboard} from './home-dashboard.js';
+import {initNotesHub} from './notes-hub.js';
 let state=readState(),current='home',selectedCourse=courses[0].id;
 const $=id=>document.getElementById(id);
 const now=()=>new Date();
@@ -18,7 +19,8 @@ function studiedMinutes(id,start){return sessionsFor(id).filter(s=>!start||s.dat
 function countDone(id){const c=course(id);let count=0;for(let i=1;i<=c.lessons;i++)if(state.completed[id+':'+i])count++;return count;}
 function notify(text){const t=$('toast');t.textContent=text;t.style.display='block';clearTimeout(notify.timeout);notify.timeout=setTimeout(()=>t.style.display='none',3000);}
 function save(){state=writeState(state);render();scheduleCloudSync();}
-function navigate(view){if(!$( 'view-'+view))view='home';current=view;document.querySelectorAll('.view').forEach(x=>x.classList.toggle('visible',x.id==='view-'+view));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===view));window.scrollTo({top:0,behavior:'instant'});if(view==='planning')fillPlan();render();}
+let notesHub=null;
+function navigate(view){if(!$( 'view-'+view))view='home';current=view;document.querySelectorAll('.view').forEach(x=>x.classList.toggle('visible',x.id==='view-'+view));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===view));window.scrollTo({top:0,behavior:'instant'});if(view==='planning')fillPlan();if(view==='notes')notesHub?.render();render();}
 document.querySelectorAll('[data-view]').forEach(el=>el.addEventListener('click',()=>navigate(el.dataset.view)));
 $('settings-button').addEventListener('click',()=>navigate('settings'));
 
@@ -453,13 +455,14 @@ window.addEventListener('storage',event=>{
 // Verificação periódica ajuda a captar gravações feitas na página de leitura.
 setInterval(()=>{if(!document.hidden)scheduleCloudSync(60000);},90000);
 
+notesHub=initNotesHub({courses,onChanged:()=>scheduleCloudSync(2000)});
 fillSelectors();fillPlan();paintTimer();render();
 window.addEventListener('pageshow',()=>{state=readState();render();});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){state=readState();render();}});
 window.addEventListener('storage',e=>{if(e.key==='ecologia-vegetal-estudos-v1'||e.key==='estudos:v1'){state=readState();render();}});
 function openDeepLink(){
  const view=location.hash.replace(/^#/,'').split('?')[0];
- if(['home','courses','planning','questions','progress','settings'].includes(view)){
+ if(['home','courses','planning','questions','progress','notes','settings'].includes(view)){
   navigate(view);
   if(view==='planning'){$('plan-course').value='ecologia-vegetal';fillPlan();}
  }
