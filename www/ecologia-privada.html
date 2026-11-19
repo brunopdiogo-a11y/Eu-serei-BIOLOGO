@@ -186,6 +186,14 @@ header.reader-toolbar{flex:none;height:auto;min-height:55px}
   <button type="button" class="voice-close" id="voice-close" aria-label="Fechar preferências de voz">×</button>
   <div class="voice-head"><strong>⚙️ Preferências de voz</strong></div>
   <div class="voice-preference"><label for="voice-selection">Voz da narração</label><select id="voice-selection" aria-label="Escolher voz de leitura"></select></div>
+  <div id="kokoro-setup" class="kokoro-setup" hidden>
+    <strong>🌼 Kokoro · Dora (pt-BR)</strong>
+    <p id="kokoro-setup-status">Verificando o mecanismo de voz Android…</p>
+    <p>Para ouvir com a Dora, instale o <a href="https://f-droid.org/pt_BR/packages/app.marmalade.tts/" target="_blank" rel="noopener noreferrer">Marmalade TTS</a>, baixe o modelo Kokoro, selecione a voz <strong>pf_dora</strong> e defina o Marmalade como mecanismo de voz do Android.</p>
+    <button type="button" id="kokoro-open-settings" class="voice-test-button">⚙ Abrir configurações de voz Android</button>
+    <button type="button" id="kokoro-check" class="voice-test-button">↻ Verificar mecanismo de voz</button>
+    <small>Depois de baixar o modelo, a voz funciona offline. O aplicativo não baixa o modelo automaticamente.</small>
+  </div>
   <div class="voice-preference"><label for="voice-rate">Velocidade</label><div class="voice-speed"><input type="range" id="voice-rate" min="0.7" max="1.5" step="0.1" value="0.9"><span id="voice-rate-value">0.9×</span></div></div>
   <fieldset class="voice-science-settings"><legend>🧬 Leitura científica</legend>
     <label><input id="voice-skip-references" type="checkbox" checked> Ignorar referências autor-data na narração</label>
@@ -195,7 +203,7 @@ header.reader-toolbar{flex:none;height:auto;min-height:55px}
     <label><input id="voice-auto-scroll" type="checkbox" checked> Acompanhar parágrafo com rolagem</label>
     <small>O texto original e suas referências permanecem intactos na aula.</small>
   </fieldset>
-  <button class="voice-test-button" type="button" id="voice-test" aria-label="Testar a voz do aplicativo">🔉 Testar voz do Android</button>
+  <button class="voice-test-button" type="button" id="voice-test" aria-label="Testar a voz do aplicativo">🔉 Testar voz selecionada</button>
   <p class="voice-hint">Toque diretamente em um parágrafo do texto da aula para escolhê-lo. Sem seleção, a leitura começa pelo primeiro parágrafo. Use <strong>🔊 Ouvir</strong> para iniciar, pausar ou continuar. No modo comunitário, a pausa retoma pela frase atual.</p>
   <p class="voice-status" id="voice-status" role="status" aria-live="polite">Pronto para a leitura.</p>
 </section>
