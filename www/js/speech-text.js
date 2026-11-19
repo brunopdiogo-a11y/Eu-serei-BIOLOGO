@@ -25,11 +25,12 @@ export function prepareScientificSpeech(value, options={}){
     text=text.replace(/(\b[\p{L}\p{N}]+),\s+e\s+(?=[\p{L}])/gu,'$1 e ');
     text=text.replace(/;\s*;/gu,';');
   }
+  // Mantemos as vírgulas de oração: o mecanismo pt-BR decide a inflexão.
+  // Remover todas as vírgulas fazia o leitor ignorar pausas importantes;
+  // cortar por tamanho criava respirações em lugares sem pontuação.
+  // Em enumerações simples, a opção de vírgulas curtas suaviza separações.
   if(settings.shortCommaPauses){
-    // TTS Android impõe pausas próprias nas vírgulas e pode alongá-las.
-    // Apenas na cópia falada, removemos as vírgulas; ponto e ponto-e-vírgula
-    // continuam sendo delimitadores de frase, portanto mais longos.
-    text=text.replace(/,\s*/gu,' ');
+    text=text.replace(/(\\b[\\p{L}]{2,12}),\\s+(?=[\\p{L}]{2,12},)/gu,'$1 ');
   }
   return text.replace(/\s{2,}/gu,' ').trim();
 }
@@ -38,45 +39,32 @@ export function prepareScientificSpeech(value, options={}){
  * Mantém palavras intactas e preserva pontuação. No texto já preparado,
  * algumas vírgulas podem ter sido suavizadas pelas preferências do usuário.
  */
-export function splitScientificSentences(source,{maxChars=105}={}){
-  const clean=String(source??'').replace(/\s+/gu,' ').trim();
+/**
+ * Divisão prosódica: cada frase completa deve ser enviada junta ao TTS.
+ * Somente períodos excepcionalmente longos são partidos em pausas naturais
+ * (vírgula, dois-pontos ou travessão). Não separar a cada N caracteres.
+ */
+export function splitScientificSentences(source,{maxChars=480}={}){
+  const clean=String(source??'').replace(/\\s+/gu,' ').trim();
   if(!clean)return [];
-  const limit=Math.max(70,Math.min(260,Number(maxChars)||105));
+  const limit=Math.max(250,Math.min(1000,Number(maxChars)||480));
+  const safe=clean.replace(/\\b(p|pp|fig|prof|dr|dra|et al)\\./giu,m=>m.replace('.','\\u2024'));
+  const chunks=safe.match(/.*?(?:[!?;]+(?:["”’)]*)|(?<!\\d)\\.(?!\\d)(?:["”’)]*)|$)(?=\\s|$)/gu)?.filter(x=>x.trim())||[safe];
   const segments=[];
-  // Evita tratar abreviações e números decimais como fim de frase.
-  const safe=clean.replace(/\b(p|pp|fig|prof|dr|dra|et al)\./giu,m=>m.replace('.','\u2024'));
-  const chunks=safe.match(/.*?(?:[!?;]+(?:["”’)]*)|(?<!\d)\.(?!\d)(?:["”’)]*)|$)(?=\s|$)/gu)?.filter(x=>x.trim())||[safe];
-
-  function splitLong(sentence){
-    const result=[],words=sentence.trim().split(/\s+/u);
-    let remaining=words;
-    while(remaining.length){
-      let length=0,last=0,best=0,bestScore=-1;
-      for(let n=0;n<remaining.length;n++){
-        const candidate=remaining[n];
-        const nextLength=length+(n?1:0)+candidate.length;
-        if(n>0&&nextLength>limit)break;
-        length=nextLength;last=n+1;
-        if(n===remaining.length-1)break;
-        const endsComma=/[,;:]$/.test(candidate);
-        const endsDash=/[–—]$/.test(candidate);
-        const target=limit*.76;
-        const score=(endsComma?80:endsDash?30:0)-Math.abs(length-target)/4;
-        if(length>=limit*.42&&score>bestScore){
-          best=n+1;bestScore=score;
-        }
-      }
-      const count=last===remaining.length?last:(best||last);
-      result.push(remaining.slice(0,count).join(' '));
-      remaining=remaining.slice(count);
-    }
-    return result;
-  }
   for(const chunk of chunks){
-    const sentence=chunk.replace(/\u2024/gu,'.').trim();
-    if(!sentence)continue;
+    const sentence=chunk.replace(/\\u2024/gu,'.').trim();
     if(sentence.length<=limit){segments.push(sentence);continue;}
-    segments.push(...splitLong(sentence));
+    // Primeiro, tentar respeitar pausas de oração explícitas.
+    const phrases=sentence.split(/(?<=[,:—–])\\s+/u);
+    let current='';
+    for(const phrase of phrases){
+      if(!current){current=phrase;continue;}
+      if((current+' '+phrase).length<=limit){current+=' '+phrase;continue;}
+      segments.push(current);current=phrase;
+    }
+    if(current)segments.push(current);
+    // Sem pontuação interna, manter a oração completa: um corte forçado
+    // faria o Android respirar em locais gramaticalmente inadequados.
   }
   return segments;
 }
