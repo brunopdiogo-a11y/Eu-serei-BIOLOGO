@@ -232,13 +232,28 @@ export function initStudyQuestions(frame){
         imageButton.disabled=!!msg.imageLoading;
         imageButton.addEventListener('click',()=>void requestImages(msg));
         visualActions.append(imageButton);
-        const webSearch=document.createElement('a');
-        webSearch.className='study-ai-image-button study-ai-external-image-link';
-        webSearch.href='https://www.google.com/search?tbm=isch&q='+encodeURIComponent((msg.imageQuery||msg.imageTopic||'ecologia vegetal').slice(0,180));
-        webSearch.target='_blank';webSearch.rel='noopener noreferrer';
-        webSearch.textContent='🌐 Buscar na internet';
-        webSearch.title='Abre pesquisa de imagens na web; confira a fonte e a licença.';
-        visualActions.append(webSearch);
+        const openChatGPT=document.createElement('a');
+        openChatGPT.className='study-ai-image-button study-ai-external-image-link';
+        const position=messages.indexOf(msg);
+        const original=messages.slice(0,Math.max(0,position)).reverse().find(m=>m.role==='user');
+        const question=(original?.content||msg.imageTopic||'Explique o tema desta aula').slice(0,1200);
+        const excerpt=String(original?.excerpt||'').slice(0,900);
+        const prompt=['Estou estudando Ciências Biológicas na disciplina Ecologia Vegetal.',
+          'Minha pergunta: '+question,
+          excerpt?'Trecho selecionado do material de estudo: '+excerpt:'',
+          'Explique o assunto didaticamente e, quando útil, encontre imagens reais, ilustrações ou diagramas de fontes confiáveis na internet, com links das fontes.'].filter(Boolean).join('\\n\\n');
+        // O parâmetro q é uma conveniência não documentada: pode não preencher a pergunta.
+        // Nunca enviamos automaticamente conteúdo para uma conta externa.
+        openChatGPT.href='https://chatgpt.com/?q='+encodeURIComponent(prompt.slice(0,2400));
+        openChatGPT.target='_blank';openChatGPT.rel='noopener noreferrer';
+        openChatGPT.textContent='🤖 Perguntar ao ChatGPT';
+        openChatGPT.title='Abre o ChatGPT com a pergunta preparada. Confira e envie por lá.';
+        openChatGPT.addEventListener('click',()=>{
+          // Cópia de segurança: se o link não pré-preencher, basta colar no ChatGPT.
+          if(navigator.clipboard?.writeText)navigator.clipboard.writeText(prompt).catch(()=>{});
+          notice('Abrindo o ChatGPT em nova conversa. Confira e envie a pergunta; se não aparecer, cole o texto copiado.');
+        });
+        visualActions.append(openChatGPT);
         bubble.append(visualActions);
       }
       thread.append(bubble);
