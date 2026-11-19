@@ -116,7 +116,7 @@ jobs:
           if 'registerPlugin(KokoroSetupPlugin.class)' not in s:
               anchor='registerPlugin(StudySpeechPlugin.class);'
               assert anchor in s
-              s=s.replace(anchor,anchor+'\\n        registerPlugin(KokoroSetupPlugin.class);',1)
+              s=s.replace(anchor,anchor+'\n        registerPlugin(KokoroSetupPlugin.class);',1)
               p.write_text(s)
           s=p.read_text()
           if 'registerPlugin(NativeDriveAuthPlugin.class)' not in s:
