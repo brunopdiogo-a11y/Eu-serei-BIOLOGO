@@ -123,3 +123,38 @@ test('busca visual extrai termos do assunto e tenta sinônimos quando a primeira
   assert.equal(result.scope,'commons-only');
  }finally{globalThis.fetch=original}
 });
+
+test('Gemini responde usando chave somente no servidor e contexto da disciplina',async()=>{
+  const original=globalThis.fetch;
+  let called='',body,usedKey='';
+  try{
+    globalThis.fetch=async(url,options)=>{
+      called=String(url);usedKey=options.headers['x-goog-api-key'];
+      body=JSON.parse(options.body);
+      return Response.json({candidates:[{content:{parts:[{text:'Campo limpo e campo sujo são fitofisionomias do Cerrado.'}]}}]});
+    };
+    const configured={...env,GEMINI_API_KEY:'server-only-test-key'};
+    const response=await worker.fetch(chat({question:'O que são campo limpo e campo sujo?'}),configured);
+    assert.equal(response.status,200);
+    const result=await response.json();
+    assert.equal(result.provider,'gemini');
+    assert.equal(result.model,'gemini-2.5-flash');
+    assert.ok(result.answer.includes('fitofisionomias'));
+    assert.ok(called.includes('generativelanguage.googleapis.com'));
+    assert.equal(usedKey,'server-only-test-key');
+    assert.equal(body.contents.at(-1).role,'user');
+    assert.ok(body.systemInstruction.parts[0].text.includes('Ciências Biológicas'));
+    assert.ok(!JSON.stringify(result).includes(usedKey));
+  }finally{globalThis.fetch=original}
+});
+test('Gemini sinaliza erro de autenticação sem chave exposta',async()=>{
+  const original=globalThis.fetch;
+  try{
+    globalThis.fetch=async()=>new Response('Bad API key',{status:403});
+    const response=await worker.fetch(chat({question:'Explique Ecologia Vegetal.'}),{...env,GEMINI_API_KEY:'invalid-secret'});
+    assert.equal(response.status,502);
+    const result=await response.json();
+    assert.ok(result.error.includes('GEMINI_API_KEY'));
+    assert.ok(!JSON.stringify(result).includes('invalid-secret'));
+  }finally{globalThis.fetch=original}
+});
