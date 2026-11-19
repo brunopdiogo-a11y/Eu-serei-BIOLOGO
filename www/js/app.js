@@ -421,8 +421,8 @@ async function authorizeAndEnter({silent=false}={}){
   gdSync.disabled=false;gdDisconnect.disabled=false;
   autoSyncEnabled=true;
   // Antes de liberar o painel, trazer o progresso mais recente da nuvem.
-  await runCloudSync(false);
-  if(!autoSyncEnabled)throw Error(gdStatus.textContent);
+  const synced=await runCloudSync(false);
+  if(!synced)throw Error(gdStatus.textContent);
   enterApp();return true;
  }catch(error){
   if(silent&&String(error?.message||'').includes('GOOGLE_INTERACTION_REQUIRED')){
@@ -482,9 +482,11 @@ async function runCloudSync(automatic=false){
   state=readState();render();fillPlan();
   syncStatus('✅ Google Drive: '+new Date(result.at).toLocaleString('pt-BR')+' · '+result.plans+' plano(s), '+result.sessions+' sessões, '+result.stages+' etapas concluídas. Sincronização automática ativa nesta sessão.');
   autoSyncEnabled=true;
+  return true;
  }catch(err){
   syncStatus('⚠️ Não sincronizado: '+(err?.message||String(err))+' Dados locais preservados.');
   if(!driveModule.connected())autoSyncEnabled=false;
+  return false;
  }finally{
   autoInProgress=false;
   gdSync.disabled=!driveModule?.connected();
