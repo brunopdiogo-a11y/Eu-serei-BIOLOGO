@@ -306,7 +306,7 @@ export function initStageSpeech(frame, root) {
       if(!found)return;
       if(!doc.getElementById('speech-follow-style')){
         const style=doc.createElement('style');style.id='speech-follow-style';
-        style.textContent='[data-speech-current-paragraph]{background:rgba(55,145,90,.10)!important;outline:2px solid rgba(55,145,90,.32);outline-offset:4px;border-radius:5px;scroll-margin-block:100px}';
+        style.textContent='[data-speech-current-paragraph]{background:rgba(255,207,48,.42)!important;outline:2px solid rgba(238,174,15,.9)!important;outline-offset:4px;border-radius:6px;scroll-margin-block:100px;box-decoration-break:clone;-webkit-box-decoration-break:clone}@media(prefers-color-scheme:dark){[data-speech-current-paragraph]{background:rgba(255,205,40,.48)!important;outline-color:#ffcf54!important}}';
         doc.head.append(style);
       }
       found.setAttribute('data-speech-current-paragraph','');
