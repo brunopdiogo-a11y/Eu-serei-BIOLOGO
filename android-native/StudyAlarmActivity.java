@@ -48,7 +48,7 @@ public class StudyAlarmActivity extends Activity {
   line(root,course+" · Aviso "+seq+" de 4",16,false);
   line(root,"Sua meta está esperando. Você pode começar agora ou adiar sem perder o planejamento.",14,false);
   action("▶ Estudar agora",root,true,()->{
-   stopAudio();if(base!=0)StudyAlarmPlugin.cancel(this);
+   stopAudio();if(base!=0){if(!StudyAlarmPlugin.scheduleNextDay(this))StudyAlarmPlugin.cancel(this);}
    getSharedPreferences(StudyAlarmPlugin.PREF,MODE_PRIVATE).edit().putString("lastAction","study").putInt("lastActionSeq",seq).apply();
    Intent open=new Intent(this,MainActivity.class);
    open.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -81,7 +81,9 @@ public class StudyAlarmActivity extends Activity {
    }
   }
   if(newSeq>4){
-   prefs.edit().putInt("base",-1).putString("lastAction","limit").putInt("lastActionSeq",seq).apply();
+   if(!StudyAlarmPlugin.scheduleNextDay(this)){
+    prefs.edit().putInt("base",-1).putString("lastAction","limit").putInt("lastActionSeq",seq).apply();
+   }
    return;
   }
   long start=System.currentTimeMillis()+15*60*1000L;
