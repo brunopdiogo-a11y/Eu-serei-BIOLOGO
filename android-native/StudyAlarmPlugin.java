@@ -63,8 +63,12 @@ public class StudyAlarmPlugin extends Plugin {
     long scheduled=prefs.getLong("scheduledDay",0L);
     Calendar today=Calendar.getInstance(),planned=Calendar.getInstance();
     planned.setTimeInMillis(scheduled);
-    if(scheduled>0&&planned.get(Calendar.YEAR)==today.get(Calendar.YEAR)&&
-       planned.get(Calendar.DAY_OF_YEAR)>today.get(Calendar.DAY_OF_YEAR))return true;
+    if(scheduled>0){
+      Calendar currentDate=Calendar.getInstance();
+      currentDate.set(Calendar.HOUR_OF_DAY,0);currentDate.set(Calendar.MINUTE,0);
+      currentDate.set(Calendar.SECOND,0);currentDate.set(Calendar.MILLISECOND,0);
+      if(planned.getTimeInMillis()>=currentDate.getTimeInMillis()+24*60*60*1000L)return true;
+    }
     int hour=prefs.getInt("dailyHour",8),minute=prefs.getInt("dailyMinute",30);
     Calendar day=Calendar.getInstance();
     long activeDay=prefs.getLong("scheduledDay",0);
@@ -85,6 +89,27 @@ public class StudyAlarmPlugin extends Plugin {
     }
     prefs.edit().putLong("scheduledDay",first).putString("lastAction","renewed").apply();
     return true;
+  }
+  // Android clears pending alarms after reboot. Restore the next daily
+  // series using the saved local hour, even when the app is not opened.
+  static synchronized void restoreDailyAfterBoot(Context c){
+    var prefs=c.getSharedPreferences(PREF,Context.MODE_PRIVATE);
+    if(!prefs.getBoolean("daily",false))return;
+    int base=prefs.getInt("base",-1);
+    if(base<=0)return;
+    Calendar d=Calendar.getInstance();
+    d.setTimeInMillis(Math.max(System.currentTimeMillis(),prefs.getLong("scheduledDay",0L)));
+    d.set(Calendar.HOUR_OF_DAY,prefs.getInt("dailyHour",8));
+    d.set(Calendar.MINUTE,prefs.getInt("dailyMinute",30));
+    d.set(Calendar.SECOND,0);d.set(Calendar.MILLISECOND,0);
+    while(d.getTimeInMillis()<=System.currentTimeMillis())d.add(Calendar.DAY_OF_MONTH,1);
+    long start=d.getTimeInMillis(),when=start;
+    for(int seq=1;seq<=MAX;seq++){
+      when=adjustQuiet(when);
+      scheduleAlarm(c,base,seq,when);
+      when+=15*60*1000L;
+    }
+    prefs.edit().putLong("scheduledDay",start).apply();
   }
   static void amCancel(Context c,int base,int seq){
     AlarmManager alarm=(AlarmManager)c.getSystemService(Context.ALARM_SERVICE);
