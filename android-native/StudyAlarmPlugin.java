@@ -33,7 +33,7 @@ public class StudyAlarmPlugin extends Plugin {
     int base=pref.getInt("base",-1);
     AlarmManager am=(AlarmManager)c.getSystemService(Context.ALARM_SERVICE);
     if(base>0)for(int seq=1;seq<=MAX;seq++)am.cancel(alarmIntent(c,base,seq));
-    pref.edit().putInt("base",-1).apply();
+    pref.edit().putInt("base",-1).putBoolean("daily",false).apply();
     c.stopService(new Intent(c,StudyAlarmService.class));
     ((NotificationManager)c.getSystemService(Context.NOTIFICATION_SERVICE)).cancel(StudyAlarmService.NOTIFICATION_ID);
   }
@@ -53,16 +53,57 @@ public class StudyAlarmPlugin extends Plugin {
       am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,when,pi);
     }else am.setExact(AlarmManager.RTC_WAKEUP,when,pi);
   }
+  // One daily series of four alarms. Only the next day's occurrences are
+  // scheduled; each renewal recalculates local time (including DST changes).
+  static synchronized boolean scheduleNextDay(Context c) {
+    var prefs=c.getSharedPreferences(PREF,Context.MODE_PRIVATE);
+    if(!prefs.getBoolean("daily",false))return false;
+    int base=prefs.getInt("base",-1);
+    if(base<=0)return false;
+    int hour=prefs.getInt("dailyHour",8),minute=prefs.getInt("dailyMinute",30);
+    Calendar day=Calendar.getInstance();
+    long activeDay=prefs.getLong("scheduledDay",0);
+    day.setTimeInMillis(Math.max(System.currentTimeMillis(),activeDay));
+    day.set(Calendar.HOUR_OF_DAY,hour);
+    day.set(Calendar.MINUTE,minute);
+    day.set(Calendar.SECOND,0);day.set(Calendar.MILLISECOND,0);
+    // Never re-arm earlier today: once the student confirmed study,
+    // today is complete even if the chosen time was later.
+    day.add(Calendar.DAY_OF_MONTH,1);
+    for(int seq=1;seq<=MAX;seq++)amCancel(c,base,seq);
+    long first=day.getTimeInMillis();
+    long when=first;
+    for(int seq=1;seq<=MAX;seq++){
+      when=adjustQuiet(when);
+      scheduleAlarm(c,base,seq,when);
+      when+=15*60*1000L;
+    }
+    prefs.edit().putLong("scheduledDay",first).putString("lastAction","renewed").apply();
+    return true;
+  }
+  static void amCancel(Context c,int base,int seq){
+    AlarmManager alarm=(AlarmManager)c.getSystemService(Context.ALARM_SERVICE);
+    alarm.cancel(alarmIntent(c,base,seq));
+  }
   @PluginMethod public void schedule(PluginCall call) {
     try {
       JSArray times=call.getArray("times");
       int base=call.getInt("base",0);
       int from=call.getInt("fromSeq",1);
       String course=call.getString("course","Ecologia Vegetal");
+      boolean daily=call.getBoolean("daily",false);
+      long dailyStart=call.getLong("dailyStart",0L);
       if(times==null||times.length()==0||base<=0||from<1||from>4) {call.reject("Compromisso inválido.");return;}
       cancel(getContext());
       var edit=getContext().getSharedPreferences(PREF,Context.MODE_PRIVATE).edit();
-      edit.putInt("base",base).putString("course",course).putInt("lastActionSeq",0).apply();
+      Calendar initial=Calendar.getInstance();
+      initial.setTimeInMillis(dailyStart>0?dailyStart:times.getLong(0));
+      edit.putInt("base",base).putString("course",course)
+          .putBoolean("daily",daily)
+          .putInt("dailyHour",initial.get(Calendar.HOUR_OF_DAY))
+          .putInt("dailyMinute",initial.get(Calendar.MINUTE))
+          .putLong("scheduledDay",initial.getTimeInMillis())
+          .putInt("lastActionSeq",0).apply();
       int count=0;
       for(int i=0;i<times.length();i++) {
         int seq=from+i;
@@ -92,6 +133,8 @@ public class StudyAlarmPlugin extends Plugin {
     data.put("base",prefs.getInt("base",-1));
     data.put("lastActionSeq",prefs.getInt("lastActionSeq",0));
     data.put("lastAction",prefs.getString("lastAction",""));
+    data.put("daily",prefs.getBoolean("daily",false));
+    data.put("scheduledDay",prefs.getLong("scheduledDay",0));
     data.put("fullScreenAllowed",Build.VERSION.SDK_INT<34||nm.canUseFullScreenIntent());
     data.put("exactAlarmAllowed",Build.VERSION.SDK_INT<31||am.canScheduleExactAlarms());
     call.resolve(data);
