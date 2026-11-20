@@ -81,6 +81,8 @@ jobs:
           cp android-native/StudyControlsPlugin.java "$JAVA_DIR/"
           cp android-native/StudyControlsService.java "$JAVA_DIR/"
           cp android-native/StudyAlarmPlugin.java "$JAVA_DIR/"
+          cp android-native/WeeklyStudyAlarmPlugin.java "$JAVA_DIR/"
+          cp android-native/WeeklyStudyAlarmReceiver.java "$JAVA_DIR/"
           cp android-native/StudyAlarmReceiver.java "$JAVA_DIR/"
           cp android-native/StudyAlarmBootReceiver.java "$JAVA_DIR/"
           cp android-native/StudyAlarmService.java "$JAVA_DIR/"
@@ -102,6 +104,9 @@ jobs:
               p.write_text(s)
           if 'registerPlugin(StudyAlarmPlugin.class)' not in s:
               s=s.replace('registerPlugin(AppHealthPlugin.class);','registerPlugin(AppHealthPlugin.class);\n        registerPlugin(StudyAlarmPlugin.class);')
+              p.write_text(s)
+          if 'registerPlugin(WeeklyStudyAlarmPlugin.class)' not in s:
+              s=s.replace('registerPlugin(StudyAlarmPlugin.class);','registerPlugin(StudyAlarmPlugin.class);\n        registerPlugin(WeeklyStudyAlarmPlugin.class);')
               p.write_text(s)
           if 'registerPlugin(StudyControlsPlugin.class)' not in s:
               s=s.replace('registerPlugin(StudyAlarmPlugin.class);','registerPlugin(StudyAlarmPlugin.class);\n        registerPlugin(StudyControlsPlugin.class);')
@@ -148,6 +153,8 @@ jobs:
           alarm_activity='<activity android:name=".StudyAlarmActivity" android:exported="false" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:showWhenLocked="true" android:turnScreenOn="true" />'
           for entry in [alarm_receiver,alarm_service,alarm_activity]:
               if entry not in m:m=m.replace('</application>',entry+'\n    </application>')
+          weekly_receiver='<receiver android:name=".WeeklyStudyAlarmReceiver" android:enabled="true" android:exported="false" />'
+          if 'WeeklyStudyAlarmReceiver' not in m:m=m.replace('</application>',weekly_receiver+'\n    </application>')
           boot_receiver='<receiver android:name=".StudyAlarmBootReceiver" android:enabled="true" android:exported="false"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /><action android:name="android.intent.action.MY_PACKAGE_REPLACED" /></intent-filter></receiver>'
           if 'StudyAlarmBootReceiver' not in m:m=m.replace('</application>',boot_receiver+'\n    </application>')
           # Android 11+: o mecanismo de TTS precisa ser visível à aplicação.
