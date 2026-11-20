@@ -44,6 +44,7 @@ public class StudyAlarmService extends Service {
   ensureChannel(c);
   Intent open=new Intent(c,StudyAlarmActivity.class);
   open.putExtra("base",base).putExtra("seq",seq);
+  if(base<0)open.putExtra("weeklySlotId",-base);
   open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
   PendingIntent full=PendingIntent.getActivity(c,base%100000000+seq,open,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
   Intent silence=new Intent(c,StudyAlarmService.class).setAction(STOP);
@@ -64,6 +65,10 @@ public class StudyAlarmService extends Service {
   if(Build.VERSION.SDK_INT<34||manager.canUseFullScreenIntent())n.setFullScreenIntent(full,true);
   return n.build();
  }
+ static void postWeeklyFallback(Context c,int slotId,int seq,String course){
+  NotificationManager nm=(NotificationManager)c.getSystemService(Context.NOTIFICATION_SERVICE);
+  try{nm.notify(NOTIFICATION_ID,build(c,-slotId,seq,course));}catch(Exception ignored){}
+ }
  static void postFallback(Context c,int base,int seq,String course){
   NotificationManager nm=(NotificationManager)c.getSystemService(Context.NOTIFICATION_SERVICE);
   try{nm.notify(NOTIFICATION_ID,build(c,base,seq,course));}catch(Exception ignored){}
@@ -73,10 +78,14 @@ public class StudyAlarmService extends Service {
   if(intent==null)return START_NOT_STICKY;
   if(STOP.equals(intent.getAction())){stopSelf();return START_NOT_STICKY;}
   if(!START.equals(intent.getAction()))return START_NOT_STICKY;
-  base=intent.getIntExtra("base",-1);seq=intent.getIntExtra("seq",0);
+  int weeklySlotId=intent.getIntExtra("weeklySlotId",0);
+  base=weeklySlotId>0?-weeklySlotId:intent.getIntExtra("base",-1);seq=intent.getIntExtra("seq",0);
   var prefs=getSharedPreferences(StudyAlarmPlugin.PREF,Context.MODE_PRIVATE);
-  if((base!=0)&&(base<1||base!=prefs.getInt("base",-1))) {stopSelf();return START_NOT_STICKY;}
-  String course=base==0?"Teste do alarme":prefs.getString("course","Estudo");
+  if(weeklySlotId>0){
+   if(WeeklyStudyAlarmPlugin.find(WeeklyStudyAlarmPlugin.read(this),weeklySlotId)==null){stopSelf();return START_NOT_STICKY;}
+  }else if(base!=0&&(base<1||base!=prefs.getInt("base",-1))){stopSelf();return START_NOT_STICKY;}
+  String course=weeklySlotId>0?intent.getStringExtra("weeklyCourse"):base==0?"Teste do alarme":prefs.getString("course","Estudo");
+  if(course==null)course="Estudo";
   try{
    Notification notification=build(this,base,seq,course);
    if(Build.VERSION.SDK_INT>=29)startForeground(NOTIFICATION_ID,notification,ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
