@@ -65,9 +65,11 @@ public class WeeklyStudyAlarmPlugin extends Plugin {
  }
  static void scheduleFour(Context c,JSONObject slot,long first){
   int id=slot.optInt("id");cancelPending(c,id);
+  long when=first;
   for(int seq=1;seq<=MAX;seq++){
-   long when=StudyAlarmPlugin.adjustQuiet(first+(seq-1)*STEP);
+   when=StudyAlarmPlugin.adjustQuiet(when);
    arm(c,id,seq,when);
+   when+=STEP;
   }
  }
  static synchronized void setNext(Context c,int id,long after) {
