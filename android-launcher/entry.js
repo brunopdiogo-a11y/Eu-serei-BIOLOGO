@@ -7,6 +7,8 @@ const $=id=>document.getElementById(id);
 const courses={'ecologia-vegetal':'Ecologia Vegetal','sensoriamento':'Sensoriamento Remoto','inventariamento':'Inventariamento de Flora'};
 let current=null, actionBusy=false;
 const alarmEnabled=()=>localStorage.getItem(ALERT_KEY)!=='standard';
+const dailySelected=()=>$('reminder-repeat').value==='daily';
+function tomorrowAt(hour,minute){const d=new Date();d.setDate(d.getDate()+1);d.setHours(hour,minute,0,0);return quietAdjust(d);}
 async function initAlarmChannel(){
  await LocalNotifications.createChannel({id:ALARM_CHANNEL,name:'Alarme de estudo',description:'Cobrança de estudo com sinal e destaque na tela',importance:5,visibility:1,vibration:true,lights:true,lightColor:'#2D8B59',sound:'study_alarm.wav'});
 }
@@ -61,7 +63,7 @@ async function clearDelivered(x=current){
   if(ours.length)await LocalNotifications.removeDeliveredNotifications({notifications:ours});
  }catch{}
 }
-async function arm(course,when,fromSeq=1,base=uniqueBase()){
+async function arm(course,when,fromSeq=1,base=uniqueBase(),daily=dailySelected(),dailyStart=when){
  await checkPermission();
  if(alarmEnabled())await initAlarmChannel();
  const now=new Date();
@@ -71,35 +73,53 @@ async function arm(course,when,fromSeq=1,base=uniqueBase()){
  let result={};
  if(alarmEnabled()){
    result=await StudyAlarm.schedule({
-     base,course:courses[course],fromSeq,
+     base,course:courses[course],fromSeq,daily,dailyStart:dailyStart.getTime(),
      times:entries.map(n=>n.schedule.at.getTime())
    });
  }else{
    await StudyAlarm.cancel();
-   result=await LocalNotifications.schedule({notifications:entries});
+   // Capacitor supports a daily repetition of a calendar-date notification.
+   result=await LocalNotifications.schedule({notifications:daily?entries.map(n=>({...n,schedule:{...n.schedule,repeats:true}})):entries});
  }
- const next={base,course,nextAt:entries[0].schedule.at.toISOString(),fromSeq,enabled:true,createdAt:new Date().toISOString()};
+ const next={base,course,nextAt:entries[0].schedule.at.toISOString(),fromSeq,enabled:true,daily,dailyHour:dailyStart.getHours(),dailyMinute:dailyStart.getMinutes(),createdAt:new Date().toISOString()};
  save(next);
- report('✅ '+entries.length+' aviso(s) programados para '+courses[course]+'. Primeiro: '+dt(first)+(result.warning?' — O Android pode atrasar horários sem a permissão de alarmes exatos.':''));
+ report('✅ '+entries.length+' aviso(s) programados '+(daily?'todos os dias':'uma vez')+' para '+courses[course]+'. Primeiro: '+dt(first)+(result.warning?' — O Android pode atrasar horários sem a permissão de alarmes exatos.':''));
 }
 async function snooze(seq){
  const x=current;if(!x)return;
  const nextSeq=Math.max(x.fromSeq,seq+1);
- if(nextSeq>MAX){await cancelScheduled(x);await clearDelivered(x);save(null);report('Os quatro avisos foram utilizados. Crie um novo compromisso se desejar continuar.');return;}
+ if(nextSeq>MAX){await completeToday(x);return;}
  await cancelScheduled(x);await clearDelivered(x);
- await arm(x.course,new Date(Date.now()+INTERVAL),nextSeq,x.base);
+ await arm(x.course,new Date(Date.now()+INTERVAL),nextSeq,x.base,x.daily, new Date(new Date().setHours(x.dailyHour??8,x.dailyMinute??30,0,0)));
+}
+async function completeToday(x=current){
+ if(!x)return;
+ await clearDelivered(x);
+ if(!x.daily){await cancelScheduled(x);save(null);report('✅ Cobrança deste compromisso encerrada.');return;}
+ if(alarmEnabled()){
+   await StudyAlarm.finishToday();
+ }else{
+   await cancelScheduled(x);
+   const next=tomorrowAt(x.dailyHour??8,x.dailyMinute??30);
+   await arm(x.course,next,1,x.base,true,next);
+ }
+ const tomorrow=tomorrowAt(x.dailyHour??8,x.dailyMinute??30);
+ save({...x,fromSeq:1,nextAt:tomorrow.toISOString()});
+ report('✅ Avisos de hoje encerrados. Próxima cobrança diária: '+dt(tomorrow)+'.');
 }
 function render(){
  const x=current;
  $('active-reminder').classList.toggle('hidden',!x);
  if(x){
   $('reminder-course').value=x.course;
-  report('🔔 Cobrança ativa · '+courses[x.course]+' · próximo aviso previsto: '+dt(new Date(x.nextAt))+'. Limite de '+MAX+' avisos.');
+  $('reminder-repeat').value=x.daily?'daily':'once';
+  $('recurrence-explanation').textContent=x.daily?'O compromisso se repete diariamente. Cada dia tem até quatro avisos; confirmar o início encerra só os avisos daquele dia.':'Os quatro avisos são deste compromisso, sem repetição nos próximos dias.';
+  report('🔔 Cobrança '+(x.daily?'diária':'única')+' ativa · '+courses[x.course]+' · próximo aviso previsto: '+dt(new Date(x.nextAt))+'. Até '+MAX+' avisos por dia/compromisso.');
  }
 }
 function openWeb(){window.location.href='./index.html';}
 $('study-now').addEventListener('click',openWeb);
-$('done').addEventListener('click',async()=>{try{await cancelScheduled();await clearDelivered();save(null);report('✅ Cobrança encerrada por sua confirmação de início do estudo.');}catch(err){report('⚠️ '+err.message);}});
+$('done').addEventListener('click',async()=>{try{await completeToday();}catch(err){report('⚠️ '+err.message);}});
 $('cancel').addEventListener('click',async()=>{try{await cancelScheduled();await clearDelivered();save(null);report('Cobrança cancelada.');}catch(err){report('⚠️ '+err.message);}});
 $('snooze').addEventListener('click',async()=>{try{await snooze(current?.fromSeq||1);}catch(err){report('⚠️ '+err.message);}});
 $('enabled').addEventListener('change',async e=>{
@@ -150,7 +170,7 @@ $('schedule').addEventListener('click',async()=>{
  actionBusy=true;$('schedule').disabled=true;
  try{
   if(current){await cancelScheduled();await clearDelivered();}
-  await arm($('reminder-course').value,first);
+  await arm($('reminder-course').value,first,1,uniqueBase(),dailySelected(),first);
  }catch(err){report('⚠️ '+err.message);}
  finally{actionBusy=false;$('schedule').disabled=false;}
 });
@@ -166,8 +186,8 @@ async function processAction(action){
   await snooze(seq);
  }else if(action.actionId==='snooze_30'){
   const n=Math.max(x.fromSeq,seq+1);
-  if(n>MAX){await cancelScheduled();save(null);report('Limite de quatro avisos alcançado.');return;}
-  await cancelScheduled(x);await clearDelivered(x);await arm(x.course,new Date(Date.now()+30*60000),n,x.base);
+  if(n>MAX){await completeToday(x);return;}
+  await cancelScheduled(x);await clearDelivered(x);await arm(x.course,new Date(Date.now()+30*60000),n,x.base,x.daily,new Date(new Date().setHours(x.dailyHour??8,x.dailyMinute??30,0,0)));
  }else{
   report('Lembrete aberto. Inicie o estudo no ambiente Web ou adie pelo painel.');
  }
@@ -178,12 +198,15 @@ async function setup(){
  $('reminder-time').value=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
  $('enabled').checked=localStorage.getItem(ENABLED_KEY)!=='false';
  $('alert-mode').value=alarmEnabled()?'alarm':'standard';
+ $('reminder-repeat').value='daily';
  current=store();render();
  try{
   const status=await StudyAlarm.status();
   if(current&&alarmEnabled()&&status.base===-1){
     save(null);
     report('O compromisso anterior foi encerrado no Android. Agende o próximo quando desejar.');
+  }else if(current&&status.base===current.base&&status.daily&&status.scheduledDay>new Date(current.nextAt).getTime()){
+    current={...current,nextAt:new Date(status.scheduledDay).toISOString(),fromSeq:1};save(current);
   }else if(current&&status.base===current.base&&status.lastAction==='snoozed'){
     report('⏰ O alarme foi adiado pelo Android. O próximo aviso seguirá o horário do adiamento.');
   }
