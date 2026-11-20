@@ -60,6 +60,11 @@ public class StudyAlarmPlugin extends Plugin {
     if(!prefs.getBoolean("daily",false))return false;
     int base=prefs.getInt("base",-1);
     if(base<=0)return false;
+    long scheduled=prefs.getLong("scheduledDay",0L);
+    Calendar today=Calendar.getInstance(),planned=Calendar.getInstance();
+    planned.setTimeInMillis(scheduled);
+    if(scheduled>0&&planned.get(Calendar.YEAR)==today.get(Calendar.YEAR)&&
+       planned.get(Calendar.DAY_OF_YEAR)>today.get(Calendar.DAY_OF_YEAR))return true;
     int hour=prefs.getInt("dailyHour",8),minute=prefs.getInt("dailyMinute",30);
     Calendar day=Calendar.getInstance();
     long activeDay=prefs.getLong("scheduledDay",0);
@@ -114,6 +119,14 @@ public class StudyAlarmPlugin extends Plugin {
       }
       JSObject data=new JSObject();data.put("scheduled",count);call.resolve(data);
     }catch(Exception e){call.reject("Falha ao agendar alarme: "+e.getMessage());}
+  }
+  @PluginMethod public void finishToday(PluginCall call) {
+    try{
+      if(!scheduleNextDay(getContext()))cancel(getContext());
+      JSObject result=new JSObject();
+      result.put("daily",getContext().getSharedPreferences(PREF,Context.MODE_PRIVATE).getBoolean("daily",false));
+      call.resolve(result);
+    }catch(Exception error){call.reject("Não foi possível encerrar os avisos de hoje: "+error.getMessage());}
   }
   @PluginMethod public void test(PluginCall call) {
     try{
