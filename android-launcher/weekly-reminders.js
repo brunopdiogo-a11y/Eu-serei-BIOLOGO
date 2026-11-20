@@ -10,6 +10,7 @@ function setEditor(slot){
  editing=slot?.id||0;
  $('weekly-editor-title').textContent=editing?'✎ Editar horário':'➕ Novo horário';
  $('weekly-course').value=slot?.course||'Ecologia Vegetal';
+ $('weekly-mode').value=slot?.mode||'alarm';
  $('weekly-time').value=slot?pad(slot.hour)+':'+pad(slot.minute):'08:30';
  for(const check of $('weekly-days').querySelectorAll('input[type=checkbox]')){
   const day=Number(check.value);
@@ -33,6 +34,7 @@ function render(){
   card.append(title);
   const days=document.createElement('p');days.className='weekly-help';
   days.textContent='📅 '+formatDays(slot.days);card.append(days);
+  const kind=document.createElement('p');kind.className='weekly-help';kind.textContent=slot.mode==='standard'?'🔔 Notificação discreta':'🔊 Alarme com som';card.append(kind);
   const next=document.createElement('p');next.className='weekly-help';
   next.textContent='Próxima cobrança: '+new Date(slot.nextAt).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
   card.append(next);
@@ -78,7 +80,7 @@ export async function setupWeeklyReminders(){
    const requested=await permissions.LocalNotifications.requestPermissions();
    if(requested.display!=='granted')throw Error('Autorize notificações nas configurações do Android.');
   }
-  const payload={id:editing,days,hour,minute,course:$('weekly-course').value};
+  const payload={id:editing,days,hour,minute,course:$('weekly-course').value,mode:$('weekly-mode').value};
   const response=await Weekly.save(payload);
   items=response.items||[];setEditor(null);
   feedback('✅ Horário semanal salvo. Os demais lembretes foram preservados.');
