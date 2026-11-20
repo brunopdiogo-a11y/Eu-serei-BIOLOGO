@@ -11,6 +11,7 @@ public class StudyAlarmBootReceiver extends BroadcastReceiver {
     if(Intent.ACTION_BOOT_COMPLETED.equals(action)||
        Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)){
       try{StudyAlarmPlugin.restoreDailyAfterBoot(context);}
+      try{WeeklyStudyAlarmPlugin.restore(context);}
       catch(Exception ignored){}
     }
   }
