@@ -33,12 +33,14 @@ button:disabled{opacity:.5}.row{display:flex;gap:10px;align-items:center;flex-wr
 <p class="tiny">O modo alarme toca repetidamente por até 45 segundos e pode abrir uma tela de estudo quando o Android permitir. Com a tela desbloqueada, o sistema pode mostrar apenas um aviso destacado.</p>
 <section id="weekly-schedule">
 <h2 style="margin:20px 0 8px">📅 Minha agenda semanal</h2>
-<p class="tiny">Defina quantos horários precisar. Cada horário terá seus próprios dias, disciplina e até quatro cobranças de 15 em 15 minutos.</p>
+<p class="tiny">Defina vários horários, com dias da semana, disciplina e tipo de aviso próprios. Cada compromisso terá até quatro cobranças de 15 em 15 minutos.</p>
 <div id="weekly-items" aria-live="polite"><p class="weekly-empty">Nenhum horário semanal cadastrado.</p></div>
 <div class="hint" id="weekly-editor">
 <strong id="weekly-editor-title">➕ Novo horário</strong>
 <label class="field" for="weekly-course">Disciplina
 <select id="weekly-course"><option value="Ecologia Vegetal">🌿 Ecologia Vegetal</option><option value="Sensoriamento Remoto">🛰️ Sensoriamento Remoto</option><option value="Inventariamento de Flora">🌳 Inventariamento de Flora</option></select></label>
+<label class="field" for="weekly-mode">Tipo de lembrete
+<select id="weekly-mode"><option value="alarm">🔊 Alarme com som e vibração</option><option value="standard">🔔 Notificação discreta</option></select></label>
 <label class="field" for="weekly-time">Horário
 <input type="time" id="weekly-time" value="08:30" min="07:00" max="21:59"></label>
 <strong style="font-size:12px">Dias da semana</strong>
