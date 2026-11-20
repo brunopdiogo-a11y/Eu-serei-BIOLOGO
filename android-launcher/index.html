@@ -15,7 +15,7 @@ button:disabled{opacity:.5}.row{display:flex;gap:10px;align-items:center;flex-wr
 .hint{background:#f1f7f2;color:#56735d;padding:12px;border-radius:10px;font-size:12px;line-height:1.5}
 .status{font-size:12px;color:#32774d;line-height:1.55;min-height:20px}.tiny{font-size:11px;color:#829587}.hidden{display:none!important}
 .badge{display:inline-block;padding:5px 8px;border-radius:8px;background:#edf5ef;color:#27754a;font-size:11px;font-weight:700}
-</style></head><body><main class="panel">
+.weekly-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin:12px 0 15px}.weekly-day{display:grid;place-items:center;gap:4px;border:1px solid #dce7df;border-radius:9px;padding:8px 1px;font-size:11px;cursor:pointer}.weekly-day:has(input:checked){background:#dcf1e3;border-color:#378a56;color:#195c38;font-weight:750}.weekly-day input{accent-color:#267c4e;margin:0}.weekly-entry{border:1px solid #dce7df;border-radius:12px;padding:13px;margin:10px 0;background:#fff}.weekly-entry strong{font-size:14px}.weekly-entry p{margin:7px 0}.weekly-actions{display:flex;flex-wrap:wrap;gap:7px}.weekly-actions button{font-size:11px;padding:9px 10px}.weekly-help{font-size:11px;color:#657d6b}.weekly-empty{padding:18px;background:#f1f7f2;border-radius:12px;color:#637867;font-size:12px}.weekly-form-buttons{display:flex;gap:8px}.weekly-form-buttons button{flex:1}.legacy-settings{margin-top:22px;border-top:1px solid #e2ebe3;padding-top:15px}.legacy-settings summary{cursor:pointer;font-size:12px;color:#617a69;font-weight:700}</style></head><body><main class="panel">
 <header class="safe-header"><a class="back" href="./index.html#settings">← Voltar às configurações</a></header>
 <div class="reminder-content"><h1>🔔 Notificações inteligentes</h1>
 <p>As metas são definidas no Planejamento. Aqui você controla a cobrança e agenda o próximo lembrete do celular.</p>
@@ -31,6 +31,31 @@ button:disabled{opacity:.5}.row{display:flex;gap:10px;align-items:center;flex-wr
 <div class="row"><button type="button" class="alt" id="test-alarm">🔊 Testar alarme</button><button type="button" class="alt" id="full-screen-permission">Permitir tela cheia</button></div>
 <p class="status" id="full-screen-status" role="status">Verificando autorização de tela cheia...</p>
 <p class="tiny">O modo alarme toca repetidamente por até 45 segundos e pode abrir uma tela de estudo quando o Android permitir. Com a tela desbloqueada, o sistema pode mostrar apenas um aviso destacado.</p>
+<section id="weekly-schedule">
+<h2 style="margin:20px 0 8px">📅 Minha agenda semanal</h2>
+<p class="tiny">Defina quantos horários precisar. Cada horário terá seus próprios dias, disciplina e até quatro cobranças de 15 em 15 minutos.</p>
+<div id="weekly-items" aria-live="polite"><p class="weekly-empty">Nenhum horário semanal cadastrado.</p></div>
+<div class="hint" id="weekly-editor">
+<strong id="weekly-editor-title">➕ Novo horário</strong>
+<label class="field" for="weekly-course">Disciplina
+<select id="weekly-course"><option value="Ecologia Vegetal">🌿 Ecologia Vegetal</option><option value="Sensoriamento Remoto">🛰️ Sensoriamento Remoto</option><option value="Inventariamento de Flora">🌳 Inventariamento de Flora</option></select></label>
+<label class="field" for="weekly-time">Horário
+<input type="time" id="weekly-time" value="08:30" min="07:00" max="21:59"></label>
+<strong style="font-size:12px">Dias da semana</strong>
+<div class="weekly-days" id="weekly-days">
+<label class="weekly-day"><input type="checkbox" value="1" checked>Seg</label>
+<label class="weekly-day"><input type="checkbox" value="2" checked>Ter</label>
+<label class="weekly-day"><input type="checkbox" value="3" checked>Qua</label>
+<label class="weekly-day"><input type="checkbox" value="4" checked>Qui</label>
+<label class="weekly-day"><input type="checkbox" value="5" checked>Sex</label>
+<label class="weekly-day"><input type="checkbox" value="6">Sáb</label>
+<label class="weekly-day"><input type="checkbox" value="0">Dom</label>
+</div>
+<div class="weekly-form-buttons"><button id="weekly-save" type="button">Salvar horário</button><button id="weekly-reset" class="alt" type="button">Limpar</button></div>
+<p id="weekly-feedback" class="status" role="status"></p>
+</div></section>
+<details class="legacy-settings" id="legacy-settings"><summary>Compromisso antigo (agendamento único/diário)</summary>
+<p class="tiny">Compromissos criados antes desta agenda permanecem separados. Para evitar cobranças duplicadas, cancele o compromisso antigo após cadastrar os novos horários.</p>
 <label class="field" for="reminder-course">Disciplina do compromisso
 <select id="reminder-course"><option value="ecologia-vegetal">🌿 Ecologia Vegetal</option><option value="sensoriamento">🛰️ Sensoriamento Remoto</option><option value="inventariamento">🌳 Inventariamento de Flora</option></select></label>
 <label class="field" for="reminder-repeat">Repetir compromisso
@@ -48,5 +73,6 @@ button:disabled{opacity:.5}.row{display:flex;gap:10px;align-items:center;flex-wr
   <div class="row" style="margin-top:12px"><button id="study-now">▶ Estudar agora</button><button class="alt" id="snooze">Adiar 15 min</button></div>
   <div class="row" style="margin-top:9px"><button class="alt" id="done">✅ Já iniciei o estudo</button><button class="warn" id="cancel">Cancelar</button></div>
 </div>
+</details>
 <p class="tiny">Os avisos são locais ao celular. O Android pode atrasar alarmes quando houver restrição de bateria ou de horários exatos.</p>
 </section></div></main><script src="capacitor.js"></script><script src="main.js"></script></body></html>
