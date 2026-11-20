@@ -149,7 +149,7 @@ jobs:
           for entry in [alarm_receiver,alarm_service,alarm_activity]:
               if entry not in m:m=m.replace('</application>',entry+'\n    </application>')
           boot_receiver='<receiver android:name=".StudyAlarmBootReceiver" android:enabled="true" android:exported="false"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /><action android:name="android.intent.action.MY_PACKAGE_REPLACED" /></intent-filter></receiver>'
-          if 'StudyAlarmBootReceiver' not in m:m=m.replace('</application>',boot_receiver+'\\n    </application>')
+          if 'StudyAlarmBootReceiver' not in m:m=m.replace('</application>',boot_receiver+'\n    </application>')
           # Android 11+: o mecanismo de TTS precisa ser visível à aplicação.
           queries='<queries><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent></queries>'
           if 'android.intent.action.TTS_SERVICE' not in m:
