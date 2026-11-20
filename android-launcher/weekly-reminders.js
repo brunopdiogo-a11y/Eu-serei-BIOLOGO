@@ -1,4 +1,5 @@
 import {registerPlugin} from '@capacitor/core';
+import {LocalNotifications} from '@capacitor/local-notifications';
 const Weekly=registerPlugin('WeeklyStudyAlarm');
 const $=id=>document.getElementById(id);
 const names=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -74,10 +75,9 @@ export async function setupWeeklyReminders(){
   if(!days)throw Error('Selecione pelo menos um dia da semana.');
   if(hour<7||hour>=22)throw Error('Escolha um horário entre 07h00 e 21h59.');
   if(!$('enabled').checked)throw Error('Ative a cobrança inteligente antes de salvar.');
-  const permissions=await import('@capacitor/local-notifications');
-  const current=await permissions.LocalNotifications.checkPermissions();
+  const current=await LocalNotifications.checkPermissions();
   if(current.display!=='granted'){
-   const requested=await permissions.LocalNotifications.requestPermissions();
+   const requested=await LocalNotifications.requestPermissions();
    if(requested.display!=='granted')throw Error('Autorize notificações nas configurações do Android.');
   }
   const payload={id:editing,days,hour,minute,course:$('weekly-course').value,mode:$('weekly-mode').value};
