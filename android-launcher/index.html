@@ -33,12 +33,18 @@ button:disabled{opacity:.5}.row{display:flex;gap:10px;align-items:center;flex-wr
 <p class="tiny">O modo alarme toca repetidamente por até 45 segundos e pode abrir uma tela de estudo quando o Android permitir. Com a tela desbloqueada, o sistema pode mostrar apenas um aviso destacado.</p>
 <label class="field" for="reminder-course">Disciplina do compromisso
 <select id="reminder-course"><option value="ecologia-vegetal">🌿 Ecologia Vegetal</option><option value="sensoriamento">🛰️ Sensoriamento Remoto</option><option value="inventariamento">🌳 Inventariamento de Flora</option></select></label>
+<label class="field" for="reminder-repeat">Repetir compromisso
+<select id="reminder-repeat">
+<option value="daily" selected>🔁 Todos os dias, no mesmo horário</option>
+<option value="once">📅 Somente uma vez</option>
+</select></label>
+<p class="tiny">No modo diário, cada dia terá até quatro avisos a cada 15 minutos. Ao confirmar o início do estudo, os avisos do dia param, mas o compromisso de amanhã continua.</p>
 <label class="field" for="reminder-time">Quando lembrar?
 <input id="reminder-time" type="datetime-local"></label>
 <div class="row"><button id="schedule">Agendar lembrete</button><button id="permission" class="alt">Permissões</button></div>
 <p id="reminder-status" class="status" role="status">Nenhum compromisso agendado.</p>
 <div id="active-reminder" class="hidden">
-  <div class="hint">Os avisos continuam até você confirmar o início ou atingir o limite de quatro notificações.</div>
+  <div class="hint" id="recurrence-explanation">Os avisos continuam até você confirmar o início ou atingir o limite de quatro notificações.</div>
   <div class="row" style="margin-top:12px"><button id="study-now">▶ Estudar agora</button><button class="alt" id="snooze">Adiar 15 min</button></div>
   <div class="row" style="margin-top:9px"><button class="alt" id="done">✅ Já iniciei o estudo</button><button class="warn" id="cancel">Cancelar</button></div>
 </div>
