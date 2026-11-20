@@ -11,6 +11,11 @@ public class StudyAlarmReceiver extends BroadcastReceiver {
   int base=intent.getIntExtra("base",-1),seq=intent.getIntExtra("seq",0);
   var prefs=context.getSharedPreferences(StudyAlarmPlugin.PREF,Context.MODE_PRIVATE);
   if(base<1||seq<1||seq>4||base!=prefs.getInt("base",-1))return;
+  // The fourth alert closes today's cycle, but schedules tomorrow
+  // before starting the audio service (works even with app closed).
+  if(seq==4&&prefs.getBoolean("daily",false)){
+   StudyAlarmPlugin.scheduleNextDay(context);
+  }
   Intent service=new Intent(context,StudyAlarmService.class);
   service.setAction(StudyAlarmService.START).putExtra("base",base).putExtra("seq",seq);
   try{
