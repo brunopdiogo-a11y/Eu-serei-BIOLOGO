@@ -167,6 +167,23 @@ public class WeeklyStudyAlarmPlugin extends Plugin {
   persist(getContext(),out);
   JSObject result=new JSObject();result.put("items",out);call.resolve(result);
  }
+ @PluginMethod public void setAllEnabled(PluginCall call){
+  boolean enabled=call.getBoolean("enabled",true);
+  JSONArray all=read(getContext());
+  for(int i=0;i<all.length();i++){
+   JSONObject slot=all.optJSONObject(i);if(slot==null)continue;
+   int id=slot.optInt("id");
+   cancelPending(getContext(),id);
+   try{slot.put("enabled",enabled);}catch(Exception ignored){}
+   if(enabled){
+    long first=nextOccurrence(slot,System.currentTimeMillis()+1000);
+    try{slot.put("nextAt",first);slot.put("activeDay",first);}catch(Exception ignored){}
+    if(first>0)scheduleFour(getContext(),slot,first);
+   }
+  }
+  persist(getContext(),all);
+  JSObject out=new JSObject();out.put("items",all);call.resolve(out);
+ }
  @PluginMethod public void finish(PluginCall call){
   int id=call.getInt("id",0);
   if(find(read(getContext()),id)==null){call.reject("Horário não encontrado.");return;}
