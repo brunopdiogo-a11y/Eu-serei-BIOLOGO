@@ -61,14 +61,12 @@ public class StudyAlarmPlugin extends Plugin {
     int base=prefs.getInt("base",-1);
     if(base<=0)return false;
     long scheduled=prefs.getLong("scheduledDay",0L);
-    Calendar today=Calendar.getInstance(),planned=Calendar.getInstance();
+    Calendar planned=Calendar.getInstance(),tomorrow=Calendar.getInstance();
     planned.setTimeInMillis(scheduled);
-    if(scheduled>0){
-      Calendar currentDate=Calendar.getInstance();
-      currentDate.set(Calendar.HOUR_OF_DAY,0);currentDate.set(Calendar.MINUTE,0);
-      currentDate.set(Calendar.SECOND,0);currentDate.set(Calendar.MILLISECOND,0);
-      if(planned.getTimeInMillis()>=currentDate.getTimeInMillis()+24*60*60*1000L)return true;
-    }
+    tomorrow.set(Calendar.HOUR_OF_DAY,0);tomorrow.set(Calendar.MINUTE,0);
+    tomorrow.set(Calendar.SECOND,0);tomorrow.set(Calendar.MILLISECOND,0);
+    tomorrow.add(Calendar.DAY_OF_MONTH,1);
+    if(scheduled>0&&planned.getTimeInMillis()>=tomorrow.getTimeInMillis())return true;
     int hour=prefs.getInt("dailyHour",8),minute=prefs.getInt("dailyMinute",30);
     Calendar day=Calendar.getInstance();
     long activeDay=prefs.getLong("scheduledDay",0);
