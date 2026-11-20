@@ -73,6 +73,13 @@ public class StudyAlarmActivity extends Activity {
  private void snooze(){
   var prefs=getSharedPreferences(StudyAlarmPlugin.PREF,Context.MODE_PRIVATE);
   int newSeq=seq+1;
+  // On the fourth reminder, the receiver has already armed tomorrow.
+  // Do not cancel those newly created alarms during a snooze action.
+  if(newSeq>4&&prefs.getBoolean("daily",false)){
+   StudyAlarmPlugin.scheduleNextDay(this);
+   prefs.edit().putString("lastAction","renewed").putInt("lastActionSeq",seq).apply();
+   return;
+  }
   for(int i=1;i<=4;i++){
    int original=prefs.getInt("base",-1);
    if(original>0){
