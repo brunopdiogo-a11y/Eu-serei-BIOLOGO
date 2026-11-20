@@ -86,6 +86,7 @@ export async function setupWeeklyReminders(){
   feedback('✅ Horário semanal salvo. Os demais lembretes foram preservados.');
  }));
  $('weekly-reset').addEventListener('click',()=>setEditor(null));
+ $('weekly-permission').addEventListener('click',()=>document.getElementById('permission').click());
  $('enabled').addEventListener('change',event=>void perform(async()=>{
   const data=await Weekly.setAllEnabled({enabled:event.target.checked});
   items=data.items||[];
