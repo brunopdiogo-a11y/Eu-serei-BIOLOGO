@@ -136,6 +136,8 @@ public class WeeklyStudyAlarmPlugin extends Plugin {
    int id=call.getInt("id",0),days=call.getInt("days",0);
    int hour=call.getInt("hour",-1),minute=call.getInt("minute",-1);
    String course=call.getString("course","Ecologia Vegetal");
+   String mode=call.getString("mode","alarm");
+   if(!"alarm".equals(mode)&&!"standard".equals(mode)){call.reject("Tipo de aviso inválido.");return;}
    if(days<1||days>127||hour<7||hour>21||minute<0||minute>59||course.length()>90){call.reject("Confira os dias, horário (7h–21h59) e disciplina.");return;}
    JSONArray arr=read(getContext());
    if(id<1){
@@ -147,7 +149,7 @@ public class WeeklyStudyAlarmPlugin extends Plugin {
    if(slot==null){slot=new JSONObject();arr.put(slot);}
    else cancelPending(getContext(),id);
    slot.put("id",id);slot.put("days",days);slot.put("hour",hour);slot.put("minute",minute);
-   slot.put("course",course);slot.put("enabled",true);
+   slot.put("course",course);slot.put("mode",mode);slot.put("enabled",true);
    long first=nextOccurrence(slot,System.currentTimeMillis()+1000);
    if(first<=0){call.reject("Nenhuma ocorrência futura encontrada.");return;}
    slot.put("nextAt",first);slot.put("activeDay",first);
