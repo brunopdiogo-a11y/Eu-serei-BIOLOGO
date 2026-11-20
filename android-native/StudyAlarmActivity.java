@@ -38,8 +38,14 @@ public class StudyAlarmActivity extends Activity {
   base=getIntent().getIntExtra("base",-1);
   seq=getIntent().getIntExtra("seq",0);
   var prefs=getSharedPreferences(StudyAlarmPlugin.PREF,MODE_PRIVATE);
-  if(base!=0&&base!=prefs.getInt("base",-1)){finish();return;}
-  course=base==0?"Teste do alarme":prefs.getString("course","Estudo");
+  if(base<0){
+   org.json.JSONObject weekly=WeeklyStudyAlarmPlugin.find(WeeklyStudyAlarmPlugin.read(this),-base);
+   if(weekly==null){finish();return;}
+   course=weekly.optString("course","Estudo");
+  }else{
+   if(base!=0&&base!=prefs.getInt("base",-1)){finish();return;}
+   course=base==0?"Teste do alarme":prefs.getString("course","Estudo");
+  }
   LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
   root.setPadding(28,40,28,28);root.setGravity(Gravity.CENTER);root.setBackgroundColor(Color.rgb(247,251,247));
   line(root,"🌿  EU SEREI BIOLOGO",18,true);
@@ -48,7 +54,7 @@ public class StudyAlarmActivity extends Activity {
   line(root,course+" · Aviso "+seq+" de 4",16,false);
   line(root,"Sua meta está esperando. Você pode começar agora ou adiar sem perder o planejamento.",14,false);
   action("▶ Estudar agora",root,true,()->{
-   stopAudio();if(base!=0){if(!StudyAlarmPlugin.scheduleNextDay(this))StudyAlarmPlugin.cancel(this);}
+   stopAudio();if(base<0)WeeklyStudyAlarmPlugin.acknowledge(this,-base);else if(base!=0){if(!StudyAlarmPlugin.scheduleNextDay(this))StudyAlarmPlugin.cancel(this);}
    getSharedPreferences(StudyAlarmPlugin.PREF,MODE_PRIVATE).edit().putString("lastAction","study").putInt("lastActionSeq",seq).apply();
    Intent open=new Intent(this,MainActivity.class);
    open.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -56,7 +62,7 @@ public class StudyAlarmActivity extends Activity {
   });
   action("⏰ Adiar 15 minutos",root,false,()->{
    stopAudio();
-   if(base!=0)snooze();
+   if(base<0)WeeklyStudyAlarmPlugin.snooze(this,-base,seq);else if(base!=0)snooze();
    finish();
   });
   action("Silenciar este aviso",root,false,()->{
