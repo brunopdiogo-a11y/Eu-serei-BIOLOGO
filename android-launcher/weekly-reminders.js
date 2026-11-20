@@ -84,7 +84,11 @@ export async function setupWeeklyReminders(){
   feedback('✅ Horário semanal salvo. Os demais lembretes foram preservados.');
  }));
  $('weekly-reset').addEventListener('click',()=>setEditor(null));
- $('enabled').addEventListener('change',()=>{if(!$('enabled').checked)feedback('⚠️ Desative ou exclua os horários semanais individualmente para suspender seus alarmes.');});
+ $('enabled').addEventListener('change',event=>void perform(async()=>{
+  const data=await Weekly.setAllEnabled({enabled:event.target.checked});
+  items=data.items||[];
+  feedback(event.target.checked?'✅ Agenda semanal reativada.':'⏸ Todos os horários semanais estão pausados.');
+ }));
  setEditor(null);
  try{await refresh();}catch(err){feedback('⚠️ Agenda semanal indisponível. Instale o APK atualizado. '+(err?.message||''));}
 }
