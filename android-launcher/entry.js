@@ -1,5 +1,6 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { registerPlugin } from '@capacitor/core';
+import {setupWeeklyReminders} from './weekly-reminders.js';
 const StudyAlarm=registerPlugin('StudyAlarm');
 const WEB='./index.html';
 const KEY='eu-serei-biologo-reminders-v1', ENABLED_KEY='eu-serei-biologo-reminders-enabled-v1', ALERT_KEY='eu-serei-biologo-alert-mode-v1', ALARM_CHANNEL='study_alarm_high_v1', INTERVAL=15*60*1000, MAX=4;
@@ -228,3 +229,4 @@ async function setup(){
  }catch(err){report('Não foi possível ativar lembretes Android: '+err.message);}
 }
 setup();
+void setupWeeklyReminders();
