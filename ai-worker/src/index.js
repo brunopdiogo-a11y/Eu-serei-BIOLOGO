@@ -16,6 +16,8 @@ const SYSTEM=[
   "Use primeiro o trecho e a pergunta fornecidos pelo estudante.",
   "Não confunda o que o material afirma com explicações adicionais; indique claramente as distinções.",
   "Não invente página, citação, referência ou resultado científico.",
+  "Em perguntas sobre espécies, mantenha o nome científico e não generalize imagens ou características de outras espécies. Indique incerteza quando pertinente.",
+  "Diferencie corretamente néctar (recompensa floral), pólen, atração visual e mecanismo de polinização. Não afirme que Passiflora não oferece néctar de modo geral.",
   "Quando pedirem apoio visual, explique o conceito e informe que há botões para ver imagens reais e gerar ilustração didática. Nunca afirme que gerou algo antes do retorno da ferramenta.",
   "Em morfologia foliar, não confunda criptas estomáticas com reservatórios de água. São depressões da epiderme que abrigam estômatos e podem reduzir a perda de vapor.",
   "Explique conceitos por etapas, ofereça exemplos e termine com uma pergunta curta de verificação quando útil.",
@@ -84,57 +86,71 @@ function curatedStomatalImages(query){
  */
 // Mapeia termos do conteúdo acadêmico para consultas visuais específicas.
 // Se o tema é reconhecido, não buscamos expressões genéricas da pergunta.
+function normalizeBotanicalText(value){
+  return String(value||"").toLocaleLowerCase("pt-BR").normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"");
+}
+// Só tratar uma busca como específica quando a planta está de fato identificada.
+// Acrescentar novos táxons aqui requer sinônimos verificáveis e termos de consulta adequados.
+const BOTANICAL_TAXA=[
+  {key:"passiflora",detect:/\b(passiflora|maracuja|maracuja-amarelo|passion\s*fruit|passionflower)\b/i,
+   match:/\b(passiflora|maracuja|passion\s*fruit|passionflower|passion\s*flower)\b/i,
+   searches:["Passiflora edulis flower","Passiflora edulis floral anatomy","passion fruit flower Passiflora","flor maracuja Passiflora"]},
+  {key:"copaifera",detect:/\b(copaiba|copaifera)\b/i,
+   match:/\b(copaiba|copaifera)\b/i,
+   searches:["Copaifera flower","Copaifera plant"]},
+  {key:"hymenaea",detect:/\b(jatoba|hymenaea)\b/i,
+   match:/\b(jatoba|hymenaea)\b/i,
+   searches:["Hymenaea courbaril flower","Hymenaea courbaril"]},
+  {key:"acacia",detect:/\b(acacia)\b/i,match:/\b(acacia)\b/i,
+   searches:["Acacia flower","Acacia plant"]}
+];
+function botanicalTaxon(query){
+  const normalized=normalizeBotanicalText(query);
+  return BOTANICAL_TAXA.find(taxon=>taxon.detect.test(normalized))||null;
+}
 function visualTopic(query){
- const normalized=String(query||'').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
- if(/estom|stomat|cripta/.test(normalized))return 'stomata';
- if(/estame|antera|polen|poliniz|flor|stamen|anther|pollen|flower/.test(normalized))return 'flower';
- if(/fotossint|photosynth/.test(normalized))return 'photosynthesis';
- if(/raiz|radicul|root/.test(normalized))return 'root';
- if(/cuticula|cuticle/.test(normalized))return 'cuticle';
- return null;
+  const normalized=normalizeBotanicalText(query);
+  if(/estom|stomat|cripta/.test(normalized))return "stomata";
+  if(/estame|antera|polen|poliniz|flor|stamen|anther|pollen|flower/.test(normalized))return "flower";
+  if(/fotossint|photosynth/.test(normalized))return "photosynthesis";
+  if(/raiz|radicul|root/.test(normalized))return "root";
+  if(/cuticula|cuticle/.test(normalized))return "cuticle";
+  return null;
 }
 const relevantWords={
- flower:/\b(flower|floral|stamen|anther|pollen|pollination|botan|flor|flores|estame|antera|polen|poliniz|androecium|androceu|lily|hibiscus|orchid|angiosperm)\b/i,
- stomata:/\b(stoma|stomata|stomatal|nerium|oleander|estomato|estomatos|estomatic|leaf epidermis|epiderme foliar)\b/i,
- photosynthesis:/\b(photosynthesis|photosynthetic|fotossintese|chloroplast|cloroplasto|chlorophyll|clorofila)\b/i,
- root:/\b(root|roots|radicular|raiz|raizes|rhizosphere|rizosfera)\b/i,
- cuticle:/\b(cuticle|cuticular|cuticula|epidermis|epiderme)\b/i
+  flower:/\b(flower|floral|stamen|anther|pollen|pollination|botan|flor|flores|estame|antera|polen|poliniz|androecium|androceu|lily|hibiscus|orchid|angiosperm)\b/i,
+  stomata:/\b(stoma|stomata|stomatal|nerium|oleander|estomato|estomatos|estomatic|leaf epidermis|epiderme foliar)\b/i,
+  photosynthesis:/\b(photosynthesis|photosynthetic|fotossintese|chloroplast|cloroplasto|chlorophyll|clorofila)\b/i,
+  root:/\b(root|roots|radicular|raiz|raizes|rhizosphere|rizosfera)\b/i,
+  cuticle:/\b(cuticle|cuticular|cuticula|epidermis|epiderme)\b/i
 };
-function relevantImage(item,topic){
- const title=String(item.title||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
- // Termos artísticos/religiosos jamais devem aparecer numa busca botânica.
- if(/\b(saint|saintly|san jeronimo|sao jeronimo|st jerome|penitent|penitente|angel|anjo|jesus|christ|virgin mary|santo|saint jerome|painting|oil on canvas|pintura|portrait|retrato|religious)\b/i.test(title))return false;
- if(!topic)return true;
- return relevantWords[topic]?.test(title)===true;
+function relevantImage(item,topic,taxon){
+  const title=normalizeBotanicalText(item.title);
+  const description=normalizeBotanicalText(item.description);
+  if(/\b(saint|saintly|san jeronimo|sao jeronimo|st jerome|penitent|penitente|angel|anjo|jesus|christ|virgin mary|santo|painting|oil on canvas|pintura|portrait|retrato|religious)\b/i.test(title))return false;
+  // Nunca substituir uma espécie solicitada por uma flor genericamente semelhante.
+  // Os metadados podem orientar a pesquisa, mas a identificação precisa estar no título.
+  if(taxon&&!taxon.match.test(title))return false;
+  if(!topic)return true;
+  if(taxon)return true; // Foto com o táxon identificado pode mostrar o órgão ou hábito geral.
+  return relevantWords[topic]?.test(title+" "+description)===true;
 }
 function visualSearchTerms(query){
-  const text=safeText(query,180).toLocaleLowerCase("pt-BR")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  const text=normalizeBotanicalText(safeText(query,180));
   const clean=text.replace(/https?:\/\/\S+/g," ").replace(/[^a-z0-9\s-]/g," ")
-    .replace(/\b(crie|gere|gerar|fa[cç]a|mostre|mostrar|quero|preciso|procure|pesquise|busque|encontre|uma|um|umas|uns|para|sobre|com|por|favor|da|das|de|do|dos|em|na|nas|no|nos|como|que|sao|ser|imagem|imagens|ilustracao|ilustracoes|foto|fotos|esquema|infografico|diagrama|cientifica|cientifico|didatica|didatico|internet|aula|explicar|visual|comparacao|me|pode|plantas?\s+mostrando)\b/g," ")
+    .replace(/\b(crie|gere|gerar|faca|mostre|mostrar|quero|preciso|procure|pesquise|busque|encontre|uma|um|umas|uns|para|sobre|com|por|favor|da|das|de|do|dos|em|na|nas|no|nos|como|que|sao|ser|imagem|imagens|ilustracao|ilustracoes|foto|fotos|esquema|infografico|diagrama|cientifica|cientifico|didatica|didatico|internet|aula|explicar|visual|comparacao|me|pode)\b/g," ")
     .replace(/\s+/g," ").trim();
+  const taxon=botanicalTaxon(text);
+  // O nome científico tem precedência sobre consultas genéricas por órgão.
+  if(taxon)return taxon.searches;
   const topic=visualTopic(text);
-  if(topic==='flower')return ['flower stamen anther pollen close up','flower stamens botanical diagram','antera estame flor botânica','pollen anther flower microscope'];
-  if(topic==='stomata')return ['stomata leaf microscope','stomatal crypt Nerium oleander','estomatos folha microscopia'];
-  if(topic==='photosynthesis')return ['photosynthesis chloroplast diagram','fotossintese cloroplasto'];
-  if(topic==='root')return ['plant root anatomy diagram','sistema radicular botânica'];
-  if(topic==='cuticle')return ['plant leaf cuticle anatomy','cuticula vegetal folha microscopia'];
-  const terms=[];
-  const add=term=>{if(term&&!terms.includes(term))terms.push(term.slice(0,100));};
-  // Termos curtos e específicos oferecem resultados melhores no Commons.
-  if(/estomat|criptas?/.test(text)){add("stomata leaf microscope");add("estomatos folha");add("stomatal crypt Nerium oleander");}
-  if(/cuticula/.test(text)){add("plant leaf cuticle diagram");add("cuticula vegetal");}
-  if(/transpirac|perda de agua|economia de agua/.test(text)){add("plant transpiration diagram");add("transpiracao vegetal");}
-  if(/xerofit|cerrado|seca|arid|adaptac/.test(text)){add("xerophyte adaptations");add("cerrado plants");add("xerophytic leaf anatomy");}
-  if(/raiz|radicular/.test(text)){add("plant root anatomy");add("root system botanical illustration");}
-  if(/floresta|amazonia|vegetacao/.test(text)){add("tropical rainforest plants");add("amazon rainforest vegetation");}
-  if(/fotossint/.test(text)){add("photosynthesis diagram");add("fotossintese");}
-  if(/decidu|queda de folhas/.test(text)){add("deciduous tree leaves");add("deciduous plant");}
-  const words=clean.split(" ").filter(x=>x.length>=3);
-  if(words.length)add(words.slice(0,5).join(" "));
-  if(words.length>3)add(words.slice(-3).join(" "));
-  if(!terms.length)add(safeText(query,100));
-  return terms.slice(0,5);
+  if(topic==="flower")return ["flower stamen anther pollen close up","flower stamens botanical diagram","antera estame flor botanica","pollen anther flower microscope"];
+  if(topic==="stomata")return ["stomata leaf microscope","stomatal crypt Nerium oleander","estomatos folha microscopia"];
+  if(topic==="photosynthesis")return ["photosynthesis chloroplast diagram","fotossintese cloroplasto"];
+  if(topic==="root")return ["plant root anatomy diagram","sistema radicular botanica"];
+  if(topic==="cuticle")return ["plant leaf cuticle anatomy","cuticula vegetal folha microscopia"];
+  return clean? [clean.split(" ").filter(w=>w.length>=3).slice(0,6).join(" ")].filter(Boolean):[];
 }
 function parseCommonsImages(data){
   return (data.query?.pages||[]).filter(page=>page.ns===6).map(page=>{
@@ -148,6 +164,7 @@ function parseCommonsImages(data){
       title:String(page.title||"").replace(/^File:/,"").replace(/\.[^.]+$/,"").slice(0,180),
       thumbnail:thumb,source,
       credit:plain(metadata.Artist?.value||metadata.Credit?.value||"Wikimedia Commons"),
+      description:plain(metadata.ImageDescription?.value||metadata.ObjectName?.value||""),
       license:plain(metadata.LicenseShortName?.value||"Consulte a licença na origem")
     };
   }).filter(Boolean);
@@ -157,6 +174,7 @@ async function searchScientificImages(query){
   if(!normalized)return {images:[],terms:[]};
   const terms=visualSearchTerms(normalized);
   const topic=visualTopic(normalized);
+  const taxon=botanicalTaxon(normalized);
   const images=[],seen=new Set();
   let failures=0,attempts=0;
   for(const term of terms){
@@ -178,7 +196,7 @@ async function searchScientificImages(query){
       if(!response.ok)throw Error("Commons HTTP "+response.status);
       const found=parseCommonsImages(await response.json());
       for(const item of found){
-        if(relevantImage(item,topic)&&!seen.has(item.source)){
+        if(relevantImage(item,topic,taxon)&&!seen.has(item.source)){
           seen.add(item.source);images.push(item);
         }
         if(images.length>=6)break;
@@ -198,7 +216,7 @@ async function searchScientificImages(query){
       if(!seen.has(item.source)){images.push(item);seen.add(item.source);}
     }
   }
-  return {images:images.slice(0,6),terms};
+  return {images:images.slice(0,6),terms,identification:taxon?.key||null,verified:"title-match-only"};
 }
 
 
