@@ -142,6 +142,13 @@ export function initStageSpeech(frame, root) {
     shortCommaPauses:preferences.shortCommaPauses!==false,
     expandAcronyms:preferences.expandAcronyms!==false
   });
+  const rhythmSelect=$('voice-rhythm'),rhythmHint=$('voice-rhythm-hint');
+  const rhythms={
+    fluid:'Agrupa mais frases completas para reduzir as interrupções entre solicitações ao motor.',
+    natural:'Agrupa frases moderadamente, equilibrando continuidade e separação entre ideias.',
+    didactic:'Mantém as frases separadas para marcar melhor as mudanças de ideia.'
+  };
+  const selectedRhythm=()=>Object.hasOwn(rhythms,preferences.rhythm)?preferences.rhythm:'natural';
   function persistPreferences(){
     try{localStorage.setItem('eusereibiologo-speech-v1',JSON.stringify(preferences));}catch{}
   }
@@ -166,6 +173,25 @@ export function initStageSpeech(frame, root) {
   }
   if (preferences.rate >= .7 && preferences.rate <= 1.5) rate.value = String(preferences.rate);
   $('voice-rate-value').textContent = Number(rate.value).toFixed(1)+'×';
+  rhythmSelect.value=selectedRhythm();
+  rhythmHint.textContent=rhythms[selectedRhythm()];
+  rhythmSelect.addEventListener('change',()=>{
+    preferences.rhythm=rhythmSelect.value;
+    rhythmHint.textContent=rhythms[selectedRhythm()];
+    persistPreferences();
+    // Recriar a fila mantendo o parágrafo atual, sem perder a seleção.
+    const current=Math.max(0,paragraphIndex());
+    const shouldResume=active&&!paused;
+    const wasPaused=active&&paused;
+    stopSpeech(true);
+    parts=paragraphs.flatMap((p,paragraph)=>splitText(p).map(segment=>({...segment,paragraph})));
+    partIndex=Math.max(0,parts.findIndex(item=>item.paragraph===current));
+    selectedParagraph=current;
+    resetButtons();
+    if(shouldResume)void begin();
+    else if(wasPaused){active=true;paused=true;resetButtons();}
+    else setStatus('Ritmo '+rhythmSelect.options[rhythmSelect.selectedIndex].textContent+' salvo.');
+  });
 
   function setStatus(t) { status.textContent=t; }
   let mediaControls=null,mediaListenerAttached=false,lastMediaSignature='';
@@ -319,7 +345,7 @@ export function initStageSpeech(frame, root) {
     // Preparação pode levar alguns instantes em etapas longas, mas é feita antes
     // de enviar o texto ao motor. O conteúdo acadêmico original não é alterado.
     const spoken=prepareScientificSpeech(text,speechOptions());
-    return splitScientificSentences(spoken).filter(Boolean).map(phrase=>({
+    return splitScientificSentences(spoken,{rhythm:selectedRhythm()}).filter(Boolean).map(phrase=>({
       text:phrase,pause:0 // O motor neural decide a pausa pela pontuação da frase.
     }));
   }
