@@ -84,8 +84,16 @@ header.reader-toolbar{flex:none;height:auto;min-height:55px}
 .study-note-selection{background:#28784b;color:#fff;border-color:#28784b}
 .study-note-toolbar[hidden],.study-notes-panel[hidden],.study-note-editor[hidden]{display:none!important}
 .study-note-toolbar:hover{filter:brightness(.96)}
-.study-notes-panel{position:fixed;z-index:999997;right:12px;top:64px;bottom:12px;width:min(440px,calc(100vw - 24px));background:#fff;border:1px solid #d5e4d9;box-shadow:0 12px 44px #142b1a35;border-radius:14px;padding:17px;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:12px}
-.study-notes-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.study-notes-panel{position:fixed;z-index:999997;right:12px;top:76px;max-height:min(68vh,620px);width:min(440px,calc(100vw - 24px));background:#fff;border:1px solid #d5e4d9;box-shadow:0 12px 44px #142b1a35;border-radius:14px;padding:17px;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:12px}
+.study-notes-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:grab;touch-action:none;user-select:none}
+.study-notes-heading:active{cursor:grabbing}
+.study-notes-heading-controls{display:flex;gap:5px;flex-shrink:0}
+.study-notes-panel.is-minimized{height:auto!important;min-height:0;max-height:none;overflow:hidden}
+.study-notes-panel.is-minimized>*:not(.study-notes-heading){display:none!important}
+.study-notes-panel.is-minimized .study-notes-heading{margin:0}
+.study-note-new{background:#e8f5ec!important}
+.study-notes-panel .study-note-item blockquote:empty{display:none}
+@media(max-width:700px){.study-notes-panel{max-height:min(58dvh,520px);width:min(390px,calc(100vw - 20px))}}
 .study-notes-heading strong{display:block;color:#235c3d;font-size:17px}
 .study-notes-heading small{display:block;font-size:11px;margin-top:3px}
 .study-notes-heading button{border:0;background:#edf5ed;border-radius:9px;min-width:38px;min-height:38px;cursor:pointer}
@@ -107,7 +115,7 @@ header.reader-toolbar{flex:none;height:auto;min-height:55px}
  .reader-toolbar{flex-wrap:wrap}
  .reader-toolbar-actions{flex-wrap:wrap;justify-content:flex-end}
  .study-note-toolbar{padding:7px 8px;font-size:11px}
- .study-notes-panel{top:max(80px,calc(env(safe-area-inset-top,0px) + 65px));bottom:8px}
+ .study-notes-panel{top:max(80px,calc(env(safe-area-inset-top,0px) + 65px));bottom:auto}
 }
 .study-ai-visual-actions .study-ai-external-image-link{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;background:#eff7f0;color:#21683e;border:1px solid #cbe0d0;border-radius:10px;padding:10px 12px;min-height:40px;font-size:12px;font-weight:750}
 .study-ai-visual-actions .study-ai-external-image-link:hover{background:#dff0e3}
@@ -158,7 +166,8 @@ header.reader-toolbar{flex:none;height:auto;min-height:55px}
 </style></head><body>
 <header class="reader-toolbar"><a href="./index.html" class="reader-brand">← EU SEREI BIOLOGO</a><div class="reader-toolbar-actions"><button type="button" id="reading-chapters" class="quiet-control">📚 Estudos</button><span class="speech-header-actions"><button type="button" id="voice-toggle" class="quiet-control" aria-label="Ouvir o parágrafo selecionado">🔊 Ouvir</button><button type="button" id="voice-settings-toggle" class="quiet-control speech-settings" aria-expanded="false" aria-controls="voice-panel" aria-label="Configurações da narração" title="Configurações da narração">⚙</button></span><button type="button" id="study-note-selection" class="study-note-toolbar study-note-selection" hidden>✎ Anotar seleção</button><button type="button" id="study-note-list" class="study-note-toolbar">📝 Caderno</button><button class="lesson-plan-button" id="lesson-plan-toggle" aria-expanded="false">📅 Cronograma</button></div></header><aside id="lesson-plan-panel" class="lesson-plan-panel" hidden><div id="lesson-plan-summary"></div></aside>
 <section id="study-notes-panel" class="study-notes-panel" role="dialog" aria-label="Minhas anotações de Ecologia Vegetal" aria-hidden="true" hidden>
-  <div class="study-notes-heading"><div><strong>✎ Salvar trecho destacado</strong><small id="study-notes-count">Caderno geral disponível no menu</small></div><button type="button" id="study-notes-close" aria-label="Fechar anotações">✕</button></div>
+  <div class="study-notes-heading" id="study-notes-drag" title="Arraste para mover o caderno"><div><strong>📝 Caderno flutuante</strong><small id="study-notes-count">Mova a janela para acompanhar a leitura</small></div><div class="study-notes-heading-controls"><button type="button" id="study-notes-minimize" aria-label="Recolher caderno" title="Recolher sem perder texto">−</button><button type="button" id="study-notes-close" aria-label="Ocultar caderno" title="Ocultar">✕</button></div></div>
+  <div class="study-note-buttons"><button type="button" id="study-note-new" class="study-note-new">＋ Nova anotação</button><button type="button" id="study-note-show-list">📋 Minhas anotações</button></div>
   <div id="study-note-editor" class="study-note-editor" hidden>
     <label>Trecho selecionado</label><blockquote id="study-note-excerpt"></blockquote>
     <label for="study-note-body">Comentário (opcional)</label>
@@ -167,7 +176,7 @@ header.reader-toolbar{flex:none;height:auto;min-height:55px}
   </div>
   <p id="study-notes-status" role="status"></p>
   <div id="study-notes-list" class="study-notes-list" hidden></div>
-  <a class="study-note-hub-link" href="./index.html#notes">📝 Ver todas as anotações no caderno</a>
+  <a class="study-note-hub-link" href="./index.html#notes">Abrir caderno geral na página inicial</a>
   <p class="study-note-privacy">As notas ficam neste dispositivo e participam do backup e da sincronização Google Drive quando autorizada.</p>
 </section>
 <div id="study-note-return" class="study-note-return" role="status" hidden>
