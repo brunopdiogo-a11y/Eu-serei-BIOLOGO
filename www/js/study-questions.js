@@ -139,9 +139,9 @@ export function initStudyQuestions(frame){
     try{
       const index=messages.indexOf(msg);
       const preceding=[...messages.slice(0,Math.max(0,index))].reverse().find(m=>m.role==='user');
-      const fallback=preceding?.content||'folhas ecologia vegetal';
-      const query=msg.imageQuery||(/criptas? estom[aá]tic|est[oô]mat/i.test(msg.content+' '+fallback)
-        ?'stomatal crypt Nerium oleander':fallback.slice(0,180));
+      // Preferir o trecho selecionado: perguntas genéricas não descrevem a figura.
+      const fallback=preceding?.excerpt||preceding?.content||'';
+      const query=msg.imageQuery||fallback.slice(0,320);
       const res=await fetchWithTimeout(cfg.endpoint+'/images',{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.token},
@@ -391,9 +391,10 @@ export function initStudyQuestions(frame){
         connectionChip.classList.add('is-connected');
       }
       const imageIntent=/imagem|imagens|ilustra|figura|foto|micrografia|mostr[ea]/i.test(next.text);
-      const imageTopic=/criptas?\s+estom[aá]tic|est[oô]mato/i.test(next.text+' '+next.excerpt)
-        ?'stomatal crypt Nerium oleander':next.text.slice(0,160);
-      const answerMessage={role:'assistant',content:body.answer.trim(),imageQuery:imageTopic,imageTopic:next.text.slice(0,500)};
+      const scienceContext=String(next.excerpt||'').trim();
+      const imageTopic=/criptas?\\s+estom[aá]tic|est[oô]mato/i.test(next.text+' '+scienceContext)
+        ?'stomatal crypt Nerium oleander':(scienceContext||next.text).slice(0,320);
+      const answerMessage={role:'assistant',content:body.answer.trim(),imageQuery:imageTopic,imageTopic:scienceContext||next.text.slice(0,500)};
       messages.push(answerMessage);
       messages=messages.slice(-16);
       persistConversation();renderMessages();
