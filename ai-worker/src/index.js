@@ -82,12 +82,43 @@ function curatedStomatalImages(query){
  * A busca de imagens reais usa o Wikimedia Commons; não é indexação de toda a web.
  * Mantemos título, autoria/licença e link da página original.
  */
+// Mapeia termos do conteúdo acadêmico para consultas visuais específicas.
+// Se o tema é reconhecido, não buscamos expressões genéricas da pergunta.
+function visualTopic(query){
+ const normalized=String(query||'').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+ if(/estom|stomat|cripta/.test(normalized))return 'stomata';
+ if(/estame|antera|polen|poliniz|flor|stamen|anther|pollen|flower/.test(normalized))return 'flower';
+ if(/fotossint|photosynth/.test(normalized))return 'photosynthesis';
+ if(/raiz|radicul|root/.test(normalized))return 'root';
+ if(/cuticula|cuticle/.test(normalized))return 'cuticle';
+ return null;
+}
+const relevantWords={
+ flower:/\b(flower|floral|stamen|anther|pollen|pollination|botan|flor|flores|estame|antera|polen|poliniz|androecium|androceu|lily|hibiscus|orchid|angiosperm)\b/i,
+ stomata:/\b(stoma|stomata|stomatal|nerium|oleander|estomato|estomatos|estomatic|leaf epidermis|epiderme foliar)\b/i,
+ photosynthesis:/\b(photosynthesis|photosynthetic|fotossintese|chloroplast|cloroplasto|chlorophyll|clorofila)\b/i,
+ root:/\b(root|roots|radicular|raiz|raizes|rhizosphere|rizosfera)\b/i,
+ cuticle:/\b(cuticle|cuticular|cuticula|epidermis|epiderme)\b/i
+};
+function relevantImage(item,topic){
+ const title=String(item.title||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+ // Termos artísticos/religiosos jamais devem aparecer numa busca botânica.
+ if(/\b(saint|saintly|san jeronimo|sao jeronimo|st jerome|penitent|penitente|angel|anjo|jesus|christ|virgin mary|santo|saint jerome|painting|oil on canvas|pintura|portrait|retrato|religious)\b/i.test(title))return false;
+ if(!topic)return true;
+ return relevantWords[topic]?.test(title)===true;
+}
 function visualSearchTerms(query){
   const text=safeText(query,180).toLocaleLowerCase("pt-BR")
     .normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   const clean=text.replace(/https?:\/\/\S+/g," ").replace(/[^a-z0-9\s-]/g," ")
     .replace(/\b(crie|gere|gerar|fa[cç]a|mostre|mostrar|quero|preciso|procure|pesquise|busque|encontre|uma|um|umas|uns|para|sobre|com|por|favor|da|das|de|do|dos|em|na|nas|no|nos|como|que|sao|ser|imagem|imagens|ilustracao|ilustracoes|foto|fotos|esquema|infografico|diagrama|cientifica|cientifico|didatica|didatico|internet|aula|explicar|visual|comparacao|me|pode|plantas?\s+mostrando)\b/g," ")
     .replace(/\s+/g," ").trim();
+  const topic=visualTopic(text);
+  if(topic==='flower')return ['flower stamen anther pollen close up','flower stamens botanical diagram','antera estame flor botânica','pollen anther flower microscope'];
+  if(topic==='stomata')return ['stomata leaf microscope','stomatal crypt Nerium oleander','estomatos folha microscopia'];
+  if(topic==='photosynthesis')return ['photosynthesis chloroplast diagram','fotossintese cloroplasto'];
+  if(topic==='root')return ['plant root anatomy diagram','sistema radicular botânica'];
+  if(topic==='cuticle')return ['plant leaf cuticle anatomy','cuticula vegetal folha microscopia'];
   const terms=[];
   const add=term=>{if(term&&!terms.includes(term))terms.push(term.slice(0,100));};
   // Termos curtos e específicos oferecem resultados melhores no Commons.
@@ -125,6 +156,7 @@ async function searchScientificImages(query){
   const normalized=safeText(query,180);
   if(!normalized)return {images:[],terms:[]};
   const terms=visualSearchTerms(normalized);
+  const topic=visualTopic(normalized);
   const images=[],seen=new Set();
   let failures=0,attempts=0;
   for(const term of terms){
@@ -146,7 +178,9 @@ async function searchScientificImages(query){
       if(!response.ok)throw Error("Commons HTTP "+response.status);
       const found=parseCommonsImages(await response.json());
       for(const item of found){
-        if(!seen.has(item.source)){seen.add(item.source);images.push(item);}
+        if(relevantImage(item,topic)&&!seen.has(item.source)){
+          seen.add(item.source);images.push(item);
+        }
         if(images.length>=6)break;
       }
     }catch{failures++;}
