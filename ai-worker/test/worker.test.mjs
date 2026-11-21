@@ -10,6 +10,30 @@ function chat(body,token=env.STUDY_ACCESS_TOKEN,requestOrigin=origin){
     body:JSON.stringify(body)
   });
 }
+test('gera mapa conceitual por etapa somente com token válido e texto enviado',async()=>{
+  let sent='';
+  const e={...env,AI:{run:async(model,input)=>{
+    sent=input.messages.at(-1).content;
+    return {response:'IDEIAS:\\n- **Pólen:** participa da reprodução e também fornece alimento aos insetos.\\n- **Estames:** as anteras liberam os grãos de pólen.\\n- **Conflito:** o pólen consumido deixa de participar da fecundação.\\nSÍNTESE: a oferta de pólen envolve reprodução e visitantes florais.'};
+  }}};
+  const content='O grão de pólen é veículo para o gameta masculino e pode servir de alimento aos visitantes. '.repeat(6);
+  const request=new Request('https://tutor.example.workers.dev/stage-map',{
+    method:'POST',headers:{Origin:origin,'Content-Type':'application/json',Authorization:'Bearer '+env.STUDY_ACCESS_TOKEN},
+    body:JSON.stringify({stage:'Pólen',content})
+  });
+  const response=await worker.fetch(request,e);
+  assert.equal(response.status,200);
+  assert.ok((await response.json()).map.includes('Estames'));
+  assert.ok(sent.includes(content));
+  assert.ok(sent.includes('Pólen'));
+});
+test('rejeita mapa com material insuficiente',async()=>{
+  const response=await worker.fetch(new Request('https://tutor.example.workers.dev/stage-map',{
+    method:'POST',headers:{Origin:origin,'Content-Type':'application/json',Authorization:'Bearer '+env.STUDY_ACCESS_TOKEN},
+    body:JSON.stringify({stage:'Néctar',content:'curto'})
+  }),env);
+  assert.equal(response.status,400);
+});
 test('health does not expose secrets',async()=>{
   const res=await worker.fetch(new Request('https://tutor.example.workers.dev/health'),env);
   const json=await res.json();
