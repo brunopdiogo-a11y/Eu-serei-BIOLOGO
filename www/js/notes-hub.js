@@ -66,14 +66,14 @@ export function initNotesHub({courses,onChanged}){
  $('notes-editor-save').addEventListener('click',()=>{
   if(!editing)return;
   const text=textarea.value.trim();
-  if(!text){feedback.textContent='Escreva um texto antes de salvar.';return;}
+  // Trechos destacados permanecem válidos mesmo sem comentário.
   try{
    const data=read(editing.courseId),notes=Array.isArray(data.notes)?data.notes.slice():[];
    const i=notes.findIndex(x=>x.id===editing.id&&!x.deletedAt);
    if(i<0)throw Error('A anotação não foi encontrada.');
    notes[i]={...notes[i],text,updatedAt:new Date().toISOString()};
    write(editing.courseId,data,notes);
-   closeEdit();feedback.textContent='✅ Anotação atualizada.';render();
+   closeEdit();feedback.textContent=text?'✅ Anotação atualizada.':'✅ Trecho mantido sem comentário.';render();
   }catch(error){feedback.textContent='⚠️ '+error.message}
  });
  function render(){
