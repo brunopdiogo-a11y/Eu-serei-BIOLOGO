@@ -147,14 +147,20 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
   quote.textContent='Anotação livre sobre a etapa atual';textarea.value='';
   editor.hidden=false;list.hidden=true;openPanel();textarea.focus();
  }
- function toggleList(){
+ function showNotebookList(){
+  // Abrir sempre a lista no próprio leitor: nenhuma navegação para index.html.
   openPanel();
-  list.hidden=!list.hidden;
-  if(!list.hidden)renderList();
+  editor.hidden=true;
+  list.hidden=false;
+  renderList();
  }
- listButton.addEventListener('click',toggleList);
+ function toggleNotebookList(){
+  if(panel.hidden||list.hidden){showNotebookList();return}
+  list.hidden=true;
+ }
+ listButton.addEventListener('click',showNotebookList);
  newButton.addEventListener('click',createFreeNote);
- showList.addEventListener('click',toggleList);
+ showList.addEventListener('click',toggleNotebookList);
  minimize.addEventListener('click',()=>{
   const minimized=panel.classList.toggle('is-minimized');
   minimize.textContent=minimized?'▢':'−';
