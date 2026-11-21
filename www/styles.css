@@ -175,3 +175,34 @@ body.entry-pending>.app,body.entry-pending>.bottom-nav{visibility:hidden}
 .entry-footnote{font-size:11px;color:#879187;line-height:1.6;margin:17px 0 0}
 .entry-feedback{font-size:12px;color:#a24831;line-height:1.5;margin:10px 0 0}
 .entry-feedback:empty{display:none}
+
+/* Caderno flutuante: não substitui a leitura nem bloqueia a interface ao fundo. */
+#view-notes.notes-float-open{
+ display:flex!important;flex-direction:column;position:fixed;z-index:70;
+ top:84px;right:18px;left:auto;bottom:auto;width:min(465px,calc(100vw - 24px));
+ height:auto;max-height:min(72dvh,680px);padding:0;
+ overflow:hidden;background:#fff;border:1px solid #d6e4d9;border-radius:15px;
+ box-shadow:0 15px 50px #142b1a35;
+}
+#view-notes.notes-float-open>.page-heading{
+ display:flex;align-items:center;justify-content:space-between;gap:10px;
+ padding:13px 15px;background:#f0f7f1;border-bottom:1px solid #dce8de;
+ touch-action:none;cursor:grab;user-select:none;flex:none;
+}
+#view-notes.notes-float-open>.page-heading:active{cursor:grabbing}
+#view-notes.notes-float-open>.page-heading h1{font-size:17px;margin:4px 0 0}
+#view-notes.notes-float-open>.page-heading .eyebrow{font-size:9px;letter-spacing:.04em}
+#view-notes.notes-float-open>.card{
+ margin:0;border:0;border-radius:0;padding:13px 15px;overflow-y:auto;min-height:0;
+}
+#view-notes.notes-float-open .notes-toolbar{grid-template-columns:1fr;gap:8px}
+#view-notes.notes-float-open .notes-hub-item{padding:10px;gap:8px}
+.notes-float-controls{display:flex;align-items:center;gap:6px}
+.notes-float-controls button{width:34px;height:34px;border:0;border-radius:8px;background:#e0ece2;color:#296642;font-size:19px}
+#view-notes.notes-float-minimized{max-height:none;height:auto}
+#view-notes.notes-float-minimized>.card{display:none}
+@media(max-width:650px){
+ #view-notes.notes-float-open{top:82px;right:10px;width:min(390px,calc(100vw - 20px));max-height:60dvh}
+ #view-notes.notes-float-open>.page-heading{padding:10px 12px}
+ #view-notes.notes-float-open>.card{padding:10px 12px}
+}
