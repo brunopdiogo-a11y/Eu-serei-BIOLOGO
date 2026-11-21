@@ -246,7 +246,7 @@ export default {
     if(request.method==="OPTIONS"){
       return ORIGINS.has(origin)?new Response(null,{status:204,headers:cors(origin)}):respond({error:"Origem não permitida"},403,origin);
     }
-    if(!["/chat","/images","/generate-image"].includes(pathname)||request.method!=="POST")return respond({error:"Rota não encontrada"},404,origin);
+    if(!["/chat","/images","/generate-image","/stage-map"].includes(pathname)||request.method!=="POST")return respond({error:"Rota não encontrada"},404,origin);
     if(origin&&!ORIGINS.has(origin))return respond({error:"Origem não autorizada"},403,origin);
     if(!env.AI?.run||!env.STUDY_ACCESS_TOKEN||env.STUDY_ACCESS_TOKEN.length<24){
       return respond({error:"Servidor ainda não configurado. Verifique o binding AI e o Secret STUDY_ACCESS_TOKEN."},503,origin);
@@ -263,6 +263,44 @@ export default {
       if(content.length>MAX_BODY)return respond({error:"Pedido excede o limite permitido"},413,origin);
       data=JSON.parse(content);
     }catch{return respond({error:"JSON inválido"},400,origin);}
+    if(pathname==="/stage-map"){
+      const stage=safeText(data.stage,180);
+      const content=safeText(data.content,11400);
+      if(content.length<180)return respond({error:"Esta etapa não contém texto suficiente para elaborar o mapa."},400,origin);
+      const prompt=[
+        "Você vai construir um mapa conceitual de UMA ÚNICA ETAPA de um material universitário de Ecologia Vegetal.",
+        "Use exclusivamente o texto desta etapa. Não invente conceitos nem fatos ausentes.",
+        "Não reutilize resumos genéricos do tema ou exemplos de outras etapas.",
+        "Escolha de quatro a seis relações ou mecanismos centrais ESPECÍFICOS do trecho fornecido.",
+        "Em cada tópico, explique COMO ou POR QUE os conceitos se conectam, sem apenas copiar frases.",
+        "Não invente referências. Não misture recurso floral com atrativo floral quando forem distintos.",
+        "Responda em português brasileiro no formato exato:",
+        "IDEIAS:",
+        "- **Conceito específico:** relação, mecanismo ou consequência apoiada no texto.",
+        "SÍNTESE: uma ou duas frases sobre o sentido geral desta etapa.",
+        "Não inclua introduções, perguntas, citações inventadas ou conclusão fora desse formato.",
+        "Etapa: "+stage,
+        "Conteúdo integral da etapa:\n"+content
+      ].join("\n\n");
+      try{
+        let answer="",provider="cloudflare";
+        if(env.GEMINI_API_KEY&&String(env.GEMINI_API_KEY).trim()){
+          const result=await answerWithGemini(env,[],prompt);
+          answer=result.answer;provider=result.provider;
+        }else{
+          const model=env.AI_MODEL||"@cf/meta/llama-3.1-8b-instruct-fp8-fast";
+          const result=await env.AI.run(model,{
+            messages:[{role:"system",content:"Você é um professor universitário de Ecologia Vegetal. Resuma apenas o material fornecido, com rigor e relações conceituais."},{role:"user",content:prompt}],
+            max_tokens:900,temperature:0.2,stream:false
+          });
+          answer=typeof result==="string"?result:typeof result?.response==="string"?result.response:result?.result?.response||"";
+        }
+        if(!answer.trim())throw Error("Resposta vazia");
+        return respond({map:String(answer).slice(0,7500),provider,stage},200,origin);
+      }catch(error){
+        return respond({error:"Não foi possível gerar o mapa desta etapa agora. Confira o motor de IA e tente novamente."},502,origin);
+      }
+    }
     if(pathname==="/generate-image"){
       const topic=safeText(data.topic,500);
       const excerpt=safeText(data.excerpt,900);
