@@ -194,3 +194,34 @@ test('Gemini com modelo indisponível informa causa sem expor chave',async()=>{
   assert.ok(!JSON.stringify(body).includes('secret-only-test'));
  }finally{globalThis.fetch=original}
 });
+
+test('maracujá mantém busca por Passiflora e rejeita imagem de Salvia e outras espécies',async()=>{
+  const original=globalThis.fetch;
+  const searches=[];
+  try{
+    globalThis.fetch=async url=>{
+      searches.push(new URL(String(url)).searchParams.get('gsrsearch'));
+      const pages=['Salvia officinalis flower','Passiflora caerulea flower','Passiflora edulis flower'].map((name,index)=>({
+        ns:6,title:'File:'+name+'.jpg',
+        imageinfo:[{mime:'image/jpeg',
+          thumburl:'https://upload.wikimedia.org/wikipedia/commons/thumb/'+index+'/f/file.jpg',
+          descriptionurl:'https://commons.wikimedia.org/wiki/File:'+name.replaceAll(' ','_')+'.jpg',
+          extmetadata:{LicenseShortName:{value:'CC BY-SA 4.0'}}
+        }]
+      }));
+      return Response.json({query:{pages}});
+    };
+    const request=new Request('https://tutor.example.workers.dev/images',{
+      method:'POST',headers:{Origin:origin,'Content-Type':'application/json',
+        Authorization:'Bearer '+env.STUDY_ACCESS_TOKEN},
+      body:JSON.stringify({query:'me mostre a anatomia e composição da flor do maracujá'})
+    });
+    const response=await worker.fetch(request,env);
+    assert.equal(response.status,200);
+    const body=await response.json();
+    assert.equal(body.identification,'passiflora');
+    assert.equal(body.images.length,1);
+    assert.match(body.images[0].title,/Passiflora edulis/);
+    assert.ok(searches.every(term=>/passiflora|passion fruit|maracuja/i.test(term)));
+  }finally{globalThis.fetch=original}
+});
