@@ -24,7 +24,7 @@ test('gera mapa conceitual por etapa somente com token válido e texto enviado',
   const response=await worker.fetch(request,e);
   assert.equal(response.status,200);
   assert.ok((await response.json()).map.includes('Estames'));
-  assert.ok(sent.includes(content));
+  assert.ok(sent.includes(content.trim()));
   assert.ok(sent.includes('Pólen'));
 });
 test('rejeita mapa com material insuficiente',async()=>{
