@@ -146,6 +146,7 @@ function visualSearchTerms(query){
   const taxon=botanicalTaxon(text);
   // O nome científico tem precedência sobre consultas genéricas por órgão.
   if(taxon)return taxon.searches;
+  if(/xerofit|cerrado|adaptac.*seca/.test(text))return ["xerophyte adaptations","cerrado plants","xerophytic leaf anatomy"];
   const topic=visualTopic(text);
   if(topic==="flower")return ["flower stamen anther pollen close up","flower stamens botanical diagram","antera estame flor botanica","pollen anther flower microscope"];
   if(topic==="stomata")return ["stomata leaf microscope","stomatal crypt Nerium oleander","estomatos folha microscopia"];
