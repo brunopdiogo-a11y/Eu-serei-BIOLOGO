@@ -75,6 +75,8 @@ export function initStageMaps(frame){
    const id=String(stage.id||''),stageTitle=norm(stage.title||stage.t);
    if(!id||material.length<150)return;
    box.dataset.contextualMapBound='yes';
+   const summary=box.querySelector('summary');
+   if(summary)summary.textContent='🧠 Mapa de ideias e síntese desta etapa';
    const version=hash(stageTitle+'|'+material);
    const cache=readCache(),saved=cache[id];
    const controls=doc.createElement('div');controls.className='stage-concept-controls';
