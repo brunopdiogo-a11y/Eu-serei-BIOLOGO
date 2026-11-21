@@ -109,7 +109,7 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
     if(!window.confirm('Excluir esta anotação?'))return;
     const when=new Date().toISOString();
     const updated=getNotes().map(n=>n.id===note.id?{...n,deletedAt:when,updatedAt:when}:n);
-    writeNotes(updated);if(editingId===note.id)resetEditor();renderList();
+    writeNotes(updated);if(editingId===note.id)resetEditor();renderList();scheduleHighlights();
     status.textContent='Anotação excluída neste dispositivo.';
    });
    const central=document.createElement('button');central.type='button';
@@ -118,6 +118,107 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
    actions.append(central,edit,remove);card.append(head,cited,body,actions);list.append(card);
   }
  }
+
+ // Destaques não invasivos usando a API CSS Highlight: não modificam os parágrafos
+ // nem o HTML acadêmico, e são refeitos quando a etapa é trocada.
+ let highlighted=[],highlightObserver=null,highlightTimer=null,highlightDoc=null;
+ const HIGHLIGHT_NAME='study-saved-annotations';
+ const normalizeExcerpt=text=>String(text||'').replace(/\\s+/g,' ').trim().toLocaleLowerCase('pt-BR');
+ function matchRanges(root,excerpt,doc){
+  const needle=normalizeExcerpt(excerpt);
+  if(!needle||needle.length<2)return [];
+  const iterator=doc.createTreeWalker(root,NodeFilter.SHOW_TEXT,{
+   acceptNode(node){
+    if(!node.nodeValue?.trim()||node.parentElement?.closest('script,style,noscript,button,textarea,input,select,[hidden],[contenteditable="true"]'))return NodeFilter.FILTER_REJECT;
+    return NodeFilter.FILTER_ACCEPT;
+   }
+  });
+  const nodes=[];while(iterator.nextNode())nodes.push(iterator.currentNode);
+  let normalized='',positions=[];
+  for(const node of nodes){
+   const raw=node.nodeValue;
+   for(let i=0;i<raw.length;i++){
+    const char=raw[i];
+    if(/\\s/.test(char)){
+     if(normalized.endsWith(' '))continue;
+     normalized+=' ';positions.push({node,offset:i});
+    }else{
+     normalized+=char.toLocaleLowerCase('pt-BR');
+     positions.push({node,offset:i});
+    }
+   }
+  }
+  const found=[];let cursor=0;
+  while(found.length<8){
+   const at=normalized.indexOf(needle,cursor);
+   if(at<0)break;
+   const begin=positions[at],end=positions[at+needle.length-1];
+   if(begin&&end){
+    const range=doc.createRange();
+    range.setStart(begin.node,begin.offset);
+    range.setEnd(end.node,end.offset+1);
+    found.push(range);
+   }
+   cursor=at+needle.length;
+  }
+  return found;
+ }
+ function editHighlighted(note){
+  editingId=note.id;selection=note.excerpt||'';selectionStage=note.stage||courseTitle;freeNote=!selection;
+  quote.textContent=selection||'Anotação livre';
+  textarea.value=note.text||'';
+  editor.hidden=false;list.hidden=true;openPanel();
+  status.textContent='🟨 Anotação vinculada ao trecho destacado.';
+ }
+ function renderHighlights(){
+  const doc=frame.contentDocument,article=doc?.getElementById('articleReader');
+  if(!article||!doc.defaultView?.CSS?.highlights||!doc.defaultView.Highlight)return;
+  doc.defaultView.CSS.highlights.delete(HIGHLIGHT_NAME);
+  highlighted=[];
+  if(!doc.getElementById('study-saved-highlight-style')){
+   const style=doc.createElement('style');style.id='study-saved-highlight-style';
+   style.textContent='::highlight(study-saved-annotations){background-color:#ffe99b;color:inherit;text-decoration:underline;text-decoration-color:#dba83d;text-decoration-thickness:2px;text-underline-offset:3px}';
+   doc.head.append(style);
+  }
+  const currentStage=stageId(),name=stageName();
+  const candidates=getNotes().filter(note=>isRecord(note)&&!note.deletedAt&&note.excerpt?.trim()&&
+   (note.stageId?note.stageId===currentStage:!!note.stage&&name.includes(String(note.stage).split(' — ').at(-1).trim())));
+  const ranges=[];
+  for(const note of candidates){
+   for(const range of matchRanges(article,note.excerpt,doc)){
+    ranges.push(range);highlighted.push({range,note});
+   }
+  }
+  if(ranges.length)doc.defaultView.CSS.highlights.set(HIGHLIGHT_NAME,new doc.defaultView.Highlight(...ranges));
+ }
+ function scheduleHighlights(){
+  if(highlightTimer!==null)clearTimeout(highlightTimer);
+  highlightTimer=setTimeout(()=>{
+   highlightTimer=null;
+   try{renderHighlights()}catch(error){console.warn('Destaques de anotações indisponíveis',error)}
+  },100);
+ }
+ function openHighlightAtPointer(event){
+  if(event.button!==0||frame.contentWindow?.getSelection()?.toString())return;
+  const match=highlighted.find(({range})=>[...range.getClientRects()].some(rect=>
+   event.clientX>=rect.left&&event.clientX<=rect.right&&event.clientY>=rect.top&&event.clientY<=rect.bottom));
+  if(match)editHighlighted(match.note);
+ }
+ function attachHighlights(){
+  const doc=frame.contentDocument;
+  if(!doc||doc===highlightDoc)return;
+  highlightObserver?.disconnect();highlightDoc=doc;
+  doc.addEventListener('click',openHighlightAtPointer);
+  highlightObserver=new MutationObserver(mutations=>{
+   if(mutations.some(change=>change.target.id!=='study-saved-highlight-style'))scheduleHighlights();
+  });
+  // A aula substitui o conteúdo de articleReader ao passar para outra etapa.
+  highlightObserver.observe(doc.getElementById('articleReader')||doc.body,{childList:true,subtree:true,characterData:true});
+  scheduleHighlights();
+ }
+ window.addEventListener('eusereibiologo:notes-changed',event=>{
+  if(event.detail?.courseId===courseId)scheduleHighlights();
+ });
  save.addEventListener('click',()=>{
   const text=textarea.value.trim();
   if(freeNote&&!editingId&&!text){status.textContent='Escreva algo antes de salvar uma anotação livre.';return;}
@@ -134,7 +235,7 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
     const id=globalThis.crypto?.randomUUID?.()||'note-'+Date.now()+'-'+Math.random().toString(36).slice(2);
     notes.push({id,courseId,stageId:selectionStageId,stage:selectionStage||courseTitle,excerpt:selection||'',text,createdAt:when,updatedAt:when});
    }
-   writeNotes(notes);resetEditor();renderList();
+   writeNotes(notes);resetEditor();renderList();scheduleHighlights();
    status.textContent=text?'✅ Trecho e comentário salvos. Disponíveis para sincronização.':'✅ Trecho destacado salvo sem comentário. Disponível no caderno e na sincronização.';
   }catch(error){status.textContent='⚠️ '+error.message}
  });
@@ -205,5 +306,5 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
   }catch{}
  }
  frame.addEventListener('load',attach);
- window.addEventListener('storage',event=>{if(event.key===key&&!panel.hidden)renderList()});
+ window.addEventListener('storage',event=>{if(event.key===key){if(!panel.hidden)renderList();scheduleHighlights();}});
 }
