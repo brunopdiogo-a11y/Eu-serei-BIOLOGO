@@ -132,6 +132,8 @@ function relevantImage(item,topic,taxon){
   // Nunca substituir uma espécie solicitada por uma flor genericamente semelhante.
   // Os metadados podem orientar a pesquisa, mas a identificação precisa estar no título.
   if(taxon&&!taxon.match.test(title))return false;
+  // Maracujá-amarelo: rejeita outras espécies de Passiflora explicitamente nomeadas.
+  if(taxon?.key==="passiflora"&&/\bpassiflora\s+(caerulea|incarnata|alata|quadrangularis|cincinnata|ligularis|foetida)\b/.test(title))return false;
   if(!topic)return true;
   if(taxon)return true; // Foto com o táxon identificado pode mostrar o órgão ou hábito geral.
   return relevantWords[topic]?.test(title+" "+description)===true;
