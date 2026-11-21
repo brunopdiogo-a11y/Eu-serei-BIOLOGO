@@ -35,7 +35,8 @@ export function prepareScientificSpeech(value, options={}) {
  * maxChars é um limite de preferência, não de truncamento: quando não
  * existe fronteira gramatical segura, a frase segue inteira.
  */
-export function splitScientificSentences(source,{maxChars=480}={}){
+export function splitScientificSentences(source,{maxChars=480,rhythm='natural'}={}){
+  const mode=['fluid','natural','didactic'].includes(rhythm)?rhythm:'natural';
   const clean=String(source??'').replace(/\s+/gu,' ').trim();
   if(!clean)return [];
   const limit=Math.max(240,Math.min(1000,Number(maxChars)||480));
@@ -67,8 +68,14 @@ export function splitScientificSentences(source,{maxChars=480}={}){
   // os silêncios de reinicialização entre pontos finais. Preservamos a
   // pontuação: a própria voz continua responsável pela inflexão.
   // Não unir perguntas/exclamações, para não prejudicar a entonação.
+  // Fluido: mais frases por solicitação = menos reinicializações do motor.
+  // Natural: blocos médios, preservando inflexões de cada oração.
+  // Didático: manter frases separadas, com maior distinção entre ideias.
+  // O próprio mecanismo Kokoro/Marmalade controla os silêncios internos;
+  // estes perfis não prometem tempos exatos de pausa por pontuação.
+  if(mode==='didactic')return result;
   const combined=[];
-  const playbackLimit=Math.min(limit,420);
+  const playbackLimit=mode==='fluid'?Math.min(limit,420):Math.min(limit,270);
   for(const segment of result){
     const last=combined.length-1;
     if(last>=0&&
