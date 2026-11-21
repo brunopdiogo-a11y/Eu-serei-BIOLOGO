@@ -392,7 +392,7 @@ export function initStudyQuestions(frame){
       }
       const imageIntent=/imagem|imagens|ilustra|figura|foto|micrografia|mostr[ea]/i.test(next.text);
       const scienceContext=String(next.excerpt||'').trim();
-      const imageTopic=/criptas?\\s+estom[aá]tic|est[oô]mato/i.test(next.text+' '+scienceContext)
+      const imageTopic=/criptas?\s+estom[aá]tic|est[oô]mato/i.test(next.text+' '+scienceContext)
         ?'stomatal crypt Nerium oleander':(scienceContext||next.text).slice(0,320);
       const answerMessage={role:'assistant',content:body.answer.trim(),imageQuery:imageTopic,imageTopic:scienceContext||next.text.slice(0,500)};
       messages.push(answerMessage);
