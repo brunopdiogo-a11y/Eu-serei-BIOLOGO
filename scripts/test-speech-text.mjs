@@ -23,4 +23,18 @@ assert.deepEqual(splitScientificSentences('Água, solo, luz e temperatura.'),['�
 
 assert.deepEqual(splitScientificSentences('Solo úmido. Entretanto, o calor aumenta a transpiração.'),['Solo úmido. Entretanto, o calor aumenta a transpiração.']);
 assert.deepEqual(splitScientificSentences('A planta resistiu? Sim, resistiu.'),['A planta resistiu?','Sim, resistiu.']);
+const rhythmicText=[
+ 'As plantas do Cerrado desenvolvem características que permitem maior resistência à seca durante o ano.',
+ 'Essas estruturas também favorecem a conservação de água em diferentes tecidos vegetais.',
+ 'Por outro lado, existem espécies com estratégias distintas de sobrevivência nesse ambiente.'
+].join(' ');
+const fluid=splitScientificSentences(rhythmicText,{rhythm:'fluid'});
+const balanced=splitScientificSentences(rhythmicText,{rhythm:'natural'});
+const didactic=splitScientificSentences(rhythmicText,{rhythm:'didactic'});
+assert.ok(fluid.length<=balanced.length,'O ritmo fluido deve usar menos blocos de voz.');
+assert.ok(balanced.length<=didactic.length,'O ritmo didático deve preservar mais divisões.');
+assert.ok(fluid.length<didactic.length,'Os ritmos devem produzir segmentações diferentes.');
+for(const chunks of [fluid,balanced,didactic]){
+ assert.equal(chunks.join(' '),rhythmicText,'Nenhum perfil pode alterar ou descartar palavras.');
+}
 console.log('Leitura científica: segmentação prosódica e pontuação verificadas.');
