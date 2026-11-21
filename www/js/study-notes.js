@@ -75,7 +75,7 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
   quote.textContent=selection;
   textarea.value='';
   editor.hidden=false;openPanel();
-  textarea.focus();
+  // O campo é opcional: o usuário pode salvar o trecho imediatamente.
  }
  function renderList(){
   let notes;
@@ -116,7 +116,7 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
  }
  save.addEventListener('click',()=>{
   const text=textarea.value.trim();
-  if(!text){status.textContent='Escreva sua anotação antes de salvar.';textarea.focus();return}
+  // A seleção por si só já é uma anotação válida; comentário é opcional.
   if(text.length>5000){status.textContent='Limite de 5.000 caracteres por anotação.';return}
   try{
    const when=new Date().toISOString(),notes=getNotes().slice();
@@ -130,7 +130,7 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
     notes.push({id,courseId,stageId:selectionStageId,stage:selectionStage||courseTitle,excerpt:selection,text,createdAt:when,updatedAt:when});
    }
    writeNotes(notes);resetEditor();renderList();
-   status.textContent='✅ Anotação salva neste dispositivo. Disponível para backup e sincronização.';
+   status.textContent=text?'✅ Trecho e comentário salvos. Disponíveis para sincronização.':'✅ Trecho destacado salvo sem comentário. Disponível no caderno e na sincronização.';
   }catch(error){status.textContent='⚠️ '+error.message}
  });
  cancel.addEventListener('click',resetEditor);
