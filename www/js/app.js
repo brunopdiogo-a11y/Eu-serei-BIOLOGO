@@ -20,7 +20,58 @@ function countDone(id){const c=course(id);let count=0;for(let i=1;i<=c.lessons;i
 function notify(text){const t=$('toast');t.textContent=text;t.style.display='block';clearTimeout(notify.timeout);notify.timeout=setTimeout(()=>t.style.display='none',3000);}
 function save(){state=writeState(state);render();scheduleCloudSync();}
 let notesHub=null;
-function navigate(view){if(!$( 'view-'+view))view='home';current=view;document.querySelectorAll('.view').forEach(x=>x.classList.toggle('visible',x.id==='view-'+view));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===view));window.scrollTo({top:0,behavior:'instant'});if(view==='planning')fillPlan();if(view==='notes')notesHub?.render();render();}
+const floatingNotes=$('view-notes'),notesHandle=$('notes-float-handle');
+const notesMinimize=$('notes-float-minimize'),notesClose=$('notes-float-close');
+let notesDrag=null;
+function openFloatingNotes(){
+ floatingNotes.classList.add('notes-float-open');
+ floatingNotes.classList.remove('notes-float-minimized');
+ notesMinimize.textContent='−';
+ notesHub?.render();
+}
+function closeFloatingNotes(){
+ // Ocultar não apaga o rascunho nem força mudança de tela.
+ floatingNotes.classList.remove('notes-float-open','notes-float-minimized');
+}
+notesClose.addEventListener('click',closeFloatingNotes);
+notesMinimize.addEventListener('click',()=>{
+ const minimized=floatingNotes.classList.toggle('notes-float-minimized');
+ notesMinimize.textContent=minimized?'▢':'−';
+ notesMinimize.setAttribute('aria-label',minimized?'Expandir caderno':'Recolher caderno');
+});
+notesHandle.addEventListener('pointerdown',event=>{
+ if(event.button!==0||event.target.closest('button'))return;
+ const rect=floatingNotes.getBoundingClientRect();
+ notesDrag={id:event.pointerId,dx:event.clientX-rect.left,dy:event.clientY-rect.top};
+ notesHandle.setPointerCapture(event.pointerId);
+ event.preventDefault();
+});
+notesHandle.addEventListener('pointermove',event=>{
+ if(!notesDrag||event.pointerId!==notesDrag.id)return;
+ const x=Math.max(0,Math.min(innerWidth-floatingNotes.offsetWidth,event.clientX-notesDrag.dx));
+ const y=Math.max(0,Math.min(innerHeight-Math.min(floatingNotes.offsetHeight,50),event.clientY-notesDrag.dy));
+ floatingNotes.style.left=x+'px';floatingNotes.style.top=y+'px';
+ floatingNotes.style.right='auto';floatingNotes.style.bottom='auto';
+});
+const stopNotesDrag=()=>{notesDrag=null};
+notesHandle.addEventListener('pointerup',stopNotesDrag);
+notesHandle.addEventListener('pointercancel',stopNotesDrag);
+window.addEventListener('resize',()=>{
+ if(!floatingNotes.classList.contains('notes-float-open'))return;
+ const rect=floatingNotes.getBoundingClientRect();
+ if(rect.right>innerWidth)floatingNotes.style.left=Math.max(0,innerWidth-rect.width)+'px';
+ if(rect.top>innerHeight-50)floatingNotes.style.top=Math.max(0,innerHeight-50)+'px';
+});
+function navigate(view){
+ if(view==='notes'){openFloatingNotes();return}
+ if(!$('view-'+view))view='home';
+ current=view;
+ document.querySelectorAll('.view').forEach(x=>x.classList.toggle('visible',x.id==='view-'+view));
+ document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('selected',b.dataset.view===view));
+ window.scrollTo({top:0,behavior:'instant'});
+ if(view==='planning')fillPlan();
+ render();
+}
 document.querySelectorAll('[data-view]').forEach(el=>el.addEventListener('click',()=>navigate(el.dataset.view)));
 $('settings-button').addEventListener('click',()=>navigate('settings'));
 
