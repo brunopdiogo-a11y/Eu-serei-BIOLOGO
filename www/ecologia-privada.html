@@ -270,6 +270,7 @@ import {readEcologia} from './js/private-library.js';
 import {initStageSpeech} from './js/voice-reader.js';
 import {bindLessonPlanning} from './js/lesson-planning.js';
 import {initReadingLayout} from './js/reading-layout.js';
+import {initStageMaps} from './js/stage-maps.js';
 import {initStudyQuestions} from './js/study-questions.js';
 import {initStudyNotes} from './js/study-notes.js';
 if(window.Capacitor?.isNativePlatform?.()&&window.Capacitor?.getPlatform?.()==='android')document.body.classList.add('native-android');
@@ -455,7 +456,7 @@ window.addEventListener('pagehide',pause);
 try{
  const entry=await readEcologia();if(!entry)throw Error('Material não encontrado. Volte à biblioteca e importe o HTML completo de Ecologia Vegetal.');
  // Documento escolhido pelo usuário, não publicado no GitHub.
- const frame=$('reader');initNoteReturn(frame);watchReaderActivity(frame);initStudyQuestions(frame);initStudyNotes(frame);initStageSpeech(frame,$('voice-panel'));bindLessonPlanning(frame);initReadingLayout(frame);frame.srcdoc=entry.html;frame.classList.remove('hide');$('clock').classList.remove('hide');$('message').remove();display();
+ const frame=$('reader');initNoteReturn(frame);watchReaderActivity(frame);initStudyQuestions(frame);initStudyNotes(frame);initStageSpeech(frame,$('voice-panel'));bindLessonPlanning(frame);initReadingLayout(frame);initStageMaps(frame);frame.srcdoc=entry.html;frame.classList.remove('hide');$('clock').classList.remove('hide');$('message').remove();display();
  // O estudante inicia a contagem manualmente no botão Iniciar.
  // Ao ocultar, fechar a aba ou sair da página, a sessão é pausada e registrada.
 }catch(err){$('message').textContent='Não foi possível abrir: '+err.message;}
