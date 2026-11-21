@@ -128,87 +128,100 @@ export function initReadingLayout(frame){
    if(nav)try{nav.click()}catch{}
  });
 
- // Conclusão e avanço automático: observa o botão original do material privado.
- // A navegação só acontece quando a marcação realmente foi salva no localStorage.
+ // Ao concluir uma etapa, confirmar o salvamento antes de avançar.
+ // O HTML da disciplina é importado pelo usuário, portanto evitamos depender
+ // de funções internas não documentadas do arquivo original.
  function bindAutoAdvance(doc){
    const key='ecologia-vegetal-estudos-v1';
-   const stages=(()=>{
-     try{return JSON.parse(doc.getElementById('course-data')?.textContent||'{}').stages||[]}
-     catch{return []}
-   })();
+   const normalized=text=>String(text||'').replace(/\s+/gu,' ').trim();
+   const readProgress=()=>{try{return JSON.parse(localStorage.getItem(key)||'{}')||{}}catch{return {}}};
+   const stages=(()=>{try{
+     const data=JSON.parse(doc.getElementById('course-data')?.textContent||'{}');
+     return Array.isArray(data.stages)?data.stages:[];
+   }catch{return []}})();
    if(!stages.length)return;
+   const stageId=stage=>String(stage?.id??'');
+   const stageName=stage=>normalized(stage?.t||stage?.title||stage?.titulo||stage?.name);
+   const visibleLabel=el=>normalized(el?.textContent||el?.getAttribute?.('aria-label'));
+   const stageControls=()=>[...doc.querySelectorAll('button,a,[role="button"],[data-stage],[data-stage-id],[onclick]')];
+   const isCompletion=el=>{
+     const label=visibleLabel(el);
+     return /(?:concluir|finalizar)\s+(?:esta\s+|a\s+)?etapa|marcar\s+(?:como\s+)?conclu[ií]d/i.test(label)&&
+       !/desfazer|cancelar|reabrir/i.test(label);
+   };
    function currentStage(){
      const view=doc.getElementById('view-study');
      if(!view?.classList.contains('on'))return null;
-     const eyebrow=doc.getElementById('articleReader')?.querySelector('.eyebrow')?.textContent||'';
-     const m=eyebrow.match(/Etapa\\s+(\\d+)\\s+de\\s+\\d+/i);
-     if(!m)return null;
-     // Fallback para identificar a etapa na aula atualmente aberta.
-     const progress=readProgress();
-     const id=progress.lastStage;
-     if(id){
-       const ix=stages.findIndex(stage=>stage.id===id);
-       if(ix>=0)return {index:ix,id};
-     }
-     // Preferir correspondência pela aula e ordinal quando disponíveis.
+     const progress=readProgress(),id=String(progress.lastStage||'');
+     const storedIndex=stages.findIndex(stage=>stageId(stage)===id);
+     if(id&&storedIndex>=0)return {index:storedIndex,id};
      const article=doc.getElementById('articleReader');
-     const title=article?.querySelector('h1,h2')?.textContent?.replace(/\\s+/g,' ').trim()||'';
+     const heading=normalized(article?.querySelector('h1,h2,.stage-title')?.textContent);
      const index=stages.findIndex(stage=>{
-       const name=String(stage.t||stage.title||stage.titulo||stage.name||'').replace(/\\s+/g,' ').trim();
-       return title.length>6&&name&&(title===name||title.includes(name)||name.includes(title));
+       const title=stageName(stage);
+       return heading.length>=6&&title&&(heading===title||heading.includes(title)||title.includes(heading));
      });
-     return index>=0?{index,id:stages[index].id}:null;
+     return index>=0?{index,id:stageId(stages[index])}:null;
    }
-   function readProgress(){
-     try{return JSON.parse(localStorage.getItem(key)||'{}')||{}}
-     catch{return {}}
-   }
-   const finishLabel=element=>{
-     const text=(element.textContent||element.getAttribute('aria-label')||'').replace(/\\s+/g,' ').trim();
-     return /(?:concluir|finalizar)\\s+(?:esta\\s+|a\\s+)?etapa|marcar\\s+(?:como\\s+)?conclu[ií]d/i.test(text)&&
-       !/desfazer|cancelar|reabrir/i.test(text);
-   };
-   function openNext(currentIndex){
-     const next=stages[currentIndex+1];
-     if(!next)return; // Última etapa do curso: permanecer na conclusão.
-     const controls=[...doc.querySelectorAll('button,a,[role="button"]')];
-     // O botão de navegação original é sempre a primeira opção.
-     const nextControl=controls.find(el=>
-       !el.disabled&&/pr[oó]xima\\s+etapa|avan[cç]ar\\s+(?:para\\s+)?(?:a\\s+)?pr[oó]xima/i.test((el.textContent||'').replace(/\\s+/g,' ')));
-     if(nextControl){nextControl.click();return;}
-     // Alguns modelos retornam à grade de etapas após a conclusão.
-     const id=String(next.id||'');
-     const title=String(next.t||next.title||next.titulo||next.name||'').replace(/\\s+/g,' ').trim();
-     const possible=controls.filter(el=>{
+   let navigating=false;
+   function findStageControl(stage){
+     const id=stageId(stage),name=stageName(stage);
+     const matches=stageControls().filter(el=>{
        if(el.disabled||el.closest('#articleReader'))return false;
-       if(id&&[el.dataset.stage,el.dataset.stageId,el.dataset.id].includes(id))return true;
-       const label=(el.textContent||'').replace(/\\s+/g,' ').trim();
-       return title.length>=8&&(label===title||label.startsWith(title+' '));
+       if(id&&[el.dataset?.stage,el.dataset?.stageId,el.dataset?.id].map(String).includes(id))return true;
+       const label=visibleLabel(el);
+       return name.length>=6&&(label===name||label.startsWith(name+' '));
      });
-     if(possible.length===1)possible[0].click();
+     // Avoid clicking a random element when more than one match exists.
+     return matches.length===1?matches[0]:null;
    }
-   let advancing=false;
+   function openNext(index){
+     const next=stages[index+1];
+     if(!next)return;
+     const previous=readProgress().lastStage;
+     const candidates=stageControls().filter(el=>!el.disabled&&
+       /pr[oó]xima\s+etapa|avan[cç]ar\s+(?:para\s+)?(?:a\s+)?pr[oó]xima/i.test(visibleLabel(el)));
+     const action=candidates.find(el=>el.closest('#view-study'))||candidates[0];
+     if(action){action.click();return;}
+     const target=findStageControl(next);
+     if(target){target.click();return;}
+     // Some imported course templates render stage cards only after returning
+     // to the chapters view. Navigate there and find the exact next card.
+     const back=stageControls().find(el=>/^(?:📖\s*)?Estudos$/i.test(visibleLabel(el))&&!el.closest('#articleReader'));
+     if(back){
+       back.click();
+       let checks=0;
+       const attempt=()=>{
+         const control=findStageControl(next);
+         if(control){control.click();return;}
+         if(++checks<8)setTimeout(attempt,120);
+         else console.warn('Próxima etapa não encontrada no HTML importado',stageId(next),previous);
+       };
+       setTimeout(attempt,50);
+     }else console.warn('Não foi possível localizar a navegação da etapa seguinte',stageId(next));
+   }
    doc.addEventListener('click',event=>{
      const button=event.target?.closest?.('button,[role="button"],a');
-     if(advancing||!button||!finishLabel(button))return;
+     if(navigating||!button||!isCompletion(button))return;
      const current=currentStage();
      if(!current||!current.id||!stages[current.index+1])return;
-     const before=!!readProgress().complete?.[current.id];
-     if(before)return;
-     advancing=true;
-     // O handler do documento original roda primeiro e persiste a conclusão.
-     // Três verificações cobrem salvamento síncrono e eventual atualização da UI.
-     let attempts=0;
+     navigating=true;
+     // O listener original da disciplina conclui a etapa. Só avançamos
+     // quando a confirmação aparecer no estado salvo, nunca antes.
+     let checks=0;
      const check=()=>{
-       if(readProgress().complete?.[current.id]){
-         advancing=false;
+       const progress=readProgress();
+       if(progress.complete?.[current.id]){
+         navigating=false;
          openNext(current.index);
-       }else if(++attempts<6){
-         setTimeout(check,150);
-       }else advancing=false; // Não navegar se não houve confirmação de gravação.
+       }else if(++checks<12)setTimeout(check,120);
+       else{
+         navigating=false;
+         console.warn('Conclusão não confirmada no progresso salvo',current.id);
+       }
      };
-     setTimeout(check,80);
-   },false);
+     setTimeout(check,60);
+   });
  }
  frame.addEventListener('load',()=>{
    observer?.disconnect();focus=false;lastStage='';manualNavigation=false;
