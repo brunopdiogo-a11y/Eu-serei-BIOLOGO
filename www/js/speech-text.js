@@ -63,5 +63,20 @@ export function splitScientificSentences(source,{maxChars=480}={}){
     }
     if(group)result.push(group);
   }
-  return result;
+  // Juntar orações consecutivas em um único pedido ao motor neural diminui
+  // os silêncios de reinicialização entre pontos finais. Preservamos a
+  // pontuação: a própria voz continua responsável pela inflexão.
+  // Não unir perguntas/exclamações, para não prejudicar a entonação.
+  const combined=[];
+  const playbackLimit=Math.min(limit,420);
+  for(const segment of result){
+    const last=combined.length-1;
+    if(last>=0&&
+       combined[last].length+1+segment.length<=playbackLimit&&
+       !/[!?]$/.test(combined[last])&&
+       /[.!?;]$/.test(combined[last])){
+      combined[last]+=' '+segment;
+    }else combined.push(segment);
+  }
+  return combined;
 }
