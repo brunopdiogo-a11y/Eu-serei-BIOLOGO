@@ -5,7 +5,7 @@ assert.equal(prepareScientificSpeech('Fotossíntese (Souza, 2020, p. 1) é essen
 assert.equal(prepareScientificSpeech('Em C3, C4 e CAM (mecanismos distintos) há diferenças.',opts),'Em C três, C quatro e C A M (mecanismos distintos) há diferenças.');
 assert.equal(prepareScientificSpeech('Silva; Costa (2018) são autores.',opts),'Silva; Costa são autores.');
 assert.equal(prepareScientificSpeech('Fotossíntese (Souza, 2020).',{skipReferences:false}),'Fotossíntese (Souza, 2020).');
-assert.deepEqual(splitScientificSentences('C3 e C4 são vias. A luz influencia o processo.'),['C3 e C4 são vias.','A luz influencia o processo.']);
+assert.deepEqual(splitScientificSentences('C3 e C4 são vias. A luz influencia o processo.'),['C3 e C4 são vias. A luz influencia o processo.']);
 assert.deepEqual(splitScientificSentences('Segundo autor et al. a luz é importante.'),['Segundo autor et al. a luz é importante.']);
 assert.equal(prepareScientificSpeech('Fatores, água, e luz.'),'Fatores, água e luz.');
 assert.equal(prepareScientificSpeech('Fatores, água, e luz.',{shortCommaPauses:false}),'Fatores, água e luz.');
@@ -17,7 +17,10 @@ const segmented=splitScientificSentences(long,{maxChars:250});
 assert.ok(segmented.length>1,'Períodos muito extensos com pontuação devem se dividir.');
 assert.equal(segmented.join(' '),long,'A segmentação não deve apagar palavras ou pontuação.');
 assert.ok(segmented.slice(0,-1).every(x=>/[,;:—–.!?]$/.test(x)),'Todo corte interno deve coincidir com uma pontuação.');
-assert.deepEqual(splitScientificSentences('Água e luz. Solo e raízes.'),['Água e luz.','Solo e raízes.']);
-assert.deepEqual(splitScientificSentences('A concentração é 3.5 mol. Depois diminui.'),['A concentração é 3.5 mol.','Depois diminui.']);
+assert.deepEqual(splitScientificSentences('Água e luz. Solo e raízes.'),['Água e luz. Solo e raízes.']);
+assert.deepEqual(splitScientificSentences('A concentração é 3.5 mol. Depois diminui.'),['A concentração é 3.5 mol. Depois diminui.']);
 assert.deepEqual(splitScientificSentences('Água, solo, luz e temperatura.'),['Água, solo, luz e temperatura.']);
+
+assert.deepEqual(splitScientificSentences('Solo úmido. Entretanto, o calor aumenta a transpiração.'),['Solo úmido. Entretanto, o calor aumenta a transpiração.']);
+assert.deepEqual(splitScientificSentences('A planta resistiu? Sim, resistiu.'),['A planta resistiu?','Sim, resistiu.']);
 console.log('Leitura científica: segmentação prosódica e pontuação verificadas.');
