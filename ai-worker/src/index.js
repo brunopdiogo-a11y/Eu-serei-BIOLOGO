@@ -289,19 +289,21 @@ export default {
       const content=safeText(data.content,11400);
       if(content.length<180)return respond({error:"Esta etapa não contém texto suficiente para elaborar o mapa."},400,origin);
       const prompt=[
-        "Você vai construir um mapa conceitual de UMA ÚNICA ETAPA de um material universitário de Ecologia Vegetal.",
-        "Use exclusivamente o texto desta etapa. Não invente conceitos nem fatos ausentes.",
-        "Não reutilize resumos genéricos do tema ou exemplos de outras etapas.",
-        "Escolha de quatro a seis relações ou mecanismos centrais ESPECÍFICOS do trecho fornecido.",
-        "Em cada tópico, explique COMO ou POR QUE os conceitos se conectam, sem apenas copiar frases.",
-        "Não invente referências. Não misture recurso floral com atrativo floral quando forem distintos.",
-        "Responda em português brasileiro no formato exato:",
+        "Produza PONTOS DE FIXAÇÃO para revisão rápida de UMA ÚNICA ETAPA universitária de Ecologia Vegetal.",
+        "Faça um resumo enxuto do que o aluno acabou de ler, NÃO uma nova aula, explicação extensa nem mapa genérico.",
+        "Use exclusivamente o conteúdo enviado nesta etapa; não acrescente detalhes de conhecimento externo.",
+        "Selecione os 3 a 5 conceitos, mecanismos, distinções ou características mais importantes efetivamente desenvolvidos no texto.",
+        "Cada tópico deve conter um termo-chave em negrito e uma única frase objetiva, idealmente entre 6 e 16 palavras no total.",
+        "Preserve os termos técnicos e as relações do material; elimine exemplos secundários, introduções, generalidades e redundâncias.",
+        "Não invente adaptações, mecanismos, relações causais, exemplos ou detalhes não sustentados pelo texto.",
+        "Se houver somente três ideias distintas, produza três; nunca crie itens artificiais para preencher a lista.",
+        "A síntese final é OPCIONAL e deve ter no máximo uma frase curta integradora; omita se repetir os tópicos.",
+        "Responda em português brasileiro exatamente assim, sem texto adicional:",
         "IDEIAS:",
-        "- **Conceito específico:** relação, mecanismo ou consequência apoiada no texto.",
-        "SÍNTESE: uma ou duas frases sobre o sentido geral desta etapa.",
-        "Não inclua introduções, perguntas, citações inventadas ou conclusão fora desse formato.",
+        "- **Termo-chave:** definição ou relação curta e específica.",
+        "SÍNTESE: frase integradora curta (omitir quando desnecessária).",
         "Etapa: "+stage,
-        "Conteúdo integral da etapa:\n"+content
+        "Conteúdo exclusivo da etapa:\n"+content
       ].join("\n\n");
       try{
         let answer="",provider="cloudflare";
