@@ -103,6 +103,7 @@ export function initStageSpeech(frame, root) {
       const engine=await withTimeout(getCommunitySpeech(),3000,'Conectar à ponte Capacitor');
       while(active&&!paused&&session===token&&partIndex<parts.length){
         const item=parts[partIndex];
+        overlayUpdate();
         setStatus('Lendo parágrafo '+(item.paragraph+1)+' de '+paragraphs.length+'.');
         resetButtons();
         // Motor comunitário usa a fila nativa e confirma a conclusão da frase.
@@ -136,6 +137,57 @@ export function initStageSpeech(frame, root) {
     ['voice-expand-acronyms','expandAcronyms',true],
     ['voice-auto-scroll','autoScroll',true]
   ];
+
+  // Janela Android: mostra somente o trecho atual, inclusive sobre a tela inicial.
+  // É opcional e precisa de autorização explícita de sobreposição do sistema.
+  let floatingText=null;
+  const floatingToggle=$('voice-floating-text');
+  function floatingBridge(){
+    if(!nativeMode)return null;
+    if(floatingText)return floatingText;
+    const cap=window.Capacitor;
+    floatingText=cap?.Plugins?.StudyFloatingText||
+      (typeof cap?.registerPlugin==='function'?cap.registerPlugin('StudyFloatingText'):null);
+    return floatingText;
+  }
+  const overlayHide=()=>{
+    const bridge=floatingBridge();
+    if(bridge)void Promise.resolve(bridge.hide()).catch(()=>{});
+  };
+  function overlayUpdate(){
+    if(!nativeMode||!floatingToggle?.checked||!active||paused){overlayHide();return;}
+    const text=parts[partIndex]?.text||'';
+    if(text)void Promise.resolve(floatingBridge()?.show({text})).catch(()=>{});
+  }
+  if(floatingToggle){
+    floatingToggle.disabled=!nativeMode;
+    floatingToggle.checked=nativeMode&&preferences.floatingText===true;
+    floatingToggle.addEventListener('change',async()=>{
+      if(!nativeMode)return;
+      const bridge=floatingBridge();
+      try{
+        if(floatingToggle.checked){
+          const permission=await bridge.check();
+          if(!permission.granted){
+            floatingToggle.checked=false;
+            preferences.floatingText=false;
+            persistPreferences();
+            setStatus('Autorize "Exibir sobre outros apps" e depois ative novamente a janela flutuante.');
+            await bridge.requestPermission();
+            return;
+          }
+        }
+        preferences.floatingText=floatingToggle.checked;
+        persistPreferences();
+        overlayUpdate();
+      }catch(error){
+        floatingToggle.checked=false;
+        preferences.floatingText=false;
+        persistPreferences();
+        setStatus('Janela flutuante indisponível: '+(error?.message||error));
+      }
+    });
+  }
   const speechOptions=()=>({
     skipReferences:preferences.skipReferences!==false,
     smoothPunctuation:preferences.smoothPunctuation!==false,
@@ -264,6 +316,7 @@ export function initStageSpeech(frame, root) {
     playerPosition.textContent=parts.length?(Math.max(0,paragraphIndex())+1)+'/'+paragraphs.length:'0/0';
     updateParagraphDisplay();
     syncMedia();
+    overlayUpdate();
     emitNarrationState();
   }
   function normalized(text){
@@ -370,6 +423,7 @@ export function initStageSpeech(frame, root) {
     if(!keepPosition)partIndex=0;
     previousParagraph=-1;
     resetButtons();
+    overlayHide();
     preserveMediaOnJump=false;
   }
   function updateStage(){
