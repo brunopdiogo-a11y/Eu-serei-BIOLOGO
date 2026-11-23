@@ -31,7 +31,7 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
   try{
    const saved=JSON.parse(localStorage.getItem('ecologia-vegetal-estudos-v1')||'{}');
    const id=String(saved.lastStage||'');
-   return /^e[1-6]_\\d+$/.test(id)?id:'';
+   return /^e[1-6]_\d+$/.test(id)?id:'';
   }catch{return ''}
  };
  const stageName=()=>{
@@ -123,7 +123,7 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
  // nem o HTML acadêmico, e são refeitos quando a etapa é trocada.
  let highlighted=[],highlightObserver=null,highlightTimer=null,highlightDoc=null;
  const HIGHLIGHT_NAME='study-saved-annotations';
- const normalizeExcerpt=text=>String(text||'').replace(/\\s+/g,' ').trim().toLocaleLowerCase('pt-BR');
+ const normalizeExcerpt=text=>String(text||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('pt-BR');
  function matchRanges(root,excerpt,doc){
   const needle=normalizeExcerpt(excerpt);
   if(!needle||needle.length<2)return [];
@@ -139,7 +139,7 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
    const raw=node.nodeValue;
    for(let i=0;i<raw.length;i++){
     const char=raw[i];
-    if(/\\s/.test(char)){
+    if(/\s/.test(char)){
      if(normalized.endsWith(' '))continue;
      normalized+=' ';positions.push({node,offset:i});
     }else{
@@ -242,6 +242,8 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
  cancel.addEventListener('click',resetEditor);
  action.addEventListener('pointerdown',event=>event.preventDefault());
  action.addEventListener('click',startNew);
+ const quickSave=$('study-note-quick-save');
+ quickSave?.addEventListener('click',()=>{if(!editingId&&selection){textarea.value='';save.click();}});
  function createFreeNote(){
   if(!editor.hidden&&textarea.value.trim()&&!window.confirm('Substituir o rascunho ainda não salvo?'))return;
   editingId=null;freeNote=true;selection='';selectionStage=stageName();selectionStageId=stageId();
@@ -293,6 +295,7 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
  function attach(){
   try{
    const doc=frame.contentDocument;if(!doc)return;
+   attachHighlights();
    doc.addEventListener('selectionchange',refreshSelection);
    doc.addEventListener('mouseup',refreshSelection);
    doc.addEventListener('keyup',refreshSelection);
@@ -306,5 +309,6 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
   }catch{}
  }
  frame.addEventListener('load',attach);
+ if(frame.contentDocument?.readyState==='complete')attach();
  window.addEventListener('storage',event=>{if(event.key===key){if(!panel.hidden)renderList();scheduleHighlights();}});
 }
