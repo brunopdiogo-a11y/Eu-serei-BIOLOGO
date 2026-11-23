@@ -155,10 +155,11 @@ export function initStageSpeech(frame, root) {
     if(bridge)void Promise.resolve(bridge.hide()).catch(()=>{});
   };
   function overlayUpdate(){
-    if(!nativeMode||!floatingToggle?.checked||!active||paused){overlayHide();return;}
+    if(!nativeMode||!floatingToggle?.checked||!active||paused||!document.hidden){overlayHide();return;}
     const text=parts[partIndex]?.text||'';
     if(text)void Promise.resolve(floatingBridge()?.show({text})).catch(()=>{});
   }
+  document.addEventListener('visibilitychange',overlayUpdate);
   if(floatingToggle){
     floatingToggle.disabled=!nativeMode;
     floatingToggle.checked=nativeMode&&preferences.floatingText===true;
