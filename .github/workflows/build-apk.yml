@@ -79,6 +79,7 @@ jobs:
           cp android-native/StudyDictationPlugin.java "$JAVA_DIR/"
           cp android-native/StudySpeechService.java "$JAVA_DIR/"
           cp android-native/StudyControlsPlugin.java "$JAVA_DIR/"
+          cp android-native/StudyFloatingTextPlugin.java "$JAVA_DIR/"
           cp android-native/StudyControlsService.java "$JAVA_DIR/"
           cp android-native/StudyAlarmPlugin.java "$JAVA_DIR/"
           cp android-native/WeeklyStudyAlarmPlugin.java "$JAVA_DIR/"
@@ -107,6 +108,9 @@ jobs:
               p.write_text(s)
           if 'registerPlugin(WeeklyStudyAlarmPlugin.class)' not in s:
               s=s.replace('registerPlugin(StudyAlarmPlugin.class);','registerPlugin(StudyAlarmPlugin.class);\n        registerPlugin(WeeklyStudyAlarmPlugin.class);')
+              p.write_text(s)
+          if 'registerPlugin(StudyFloatingTextPlugin.class)' not in s:
+              s=s.replace('registerPlugin(StudySpeechPlugin.class);','registerPlugin(StudySpeechPlugin.class);\n        registerPlugin(StudyFloatingTextPlugin.class);',1)
               p.write_text(s)
           if 'registerPlugin(StudyControlsPlugin.class)' not in s:
               s=s.replace('registerPlugin(StudyAlarmPlugin.class);','registerPlugin(StudyAlarmPlugin.class);\n        registerPlugin(StudyControlsPlugin.class);')
@@ -138,7 +142,7 @@ jobs:
           assert 'registerPlugin(StudyDictationPlugin.class)' in p.read_text()
           manifest=Path('android/app/src/main/AndroidManifest.xml')
           m=manifest.read_text()
-          for permission in ['android.permission.FOREGROUND_SERVICE','android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK','android.permission.WAKE_LOCK','android.permission.POST_NOTIFICATIONS','android.permission.VIBRATE','android.permission.USE_FULL_SCREEN_INTENT','android.permission.RECEIVE_BOOT_COMPLETED']:
+          for permission in ['android.permission.SYSTEM_ALERT_WINDOW','android.permission.FOREGROUND_SERVICE','android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK','android.permission.WAKE_LOCK','android.permission.POST_NOTIFICATIONS','android.permission.VIBRATE','android.permission.USE_FULL_SCREEN_INTENT','android.permission.RECEIVE_BOOT_COMPLETED']:
               line=f'<uses-permission android:name="{permission}" />'
               if line not in m:
                   m=m.replace('<application',line+'\n    <application',1)
