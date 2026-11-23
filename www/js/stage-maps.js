@@ -3,7 +3,7 @@
  * Os mapas gerados são guardados localmente por etapa e versão do conteúdo.
  */
 export function initStageMaps(frame){
- const CACHE='eusereibiologo-stage-maps-v1';
+ const CACHE='eusereibiologo-stage-maps-v2';
  const TOKEN='eusereibiologo-ai-token-persistent-v1';
  const ENDPOINT='eusereibiologo-ai-endpoint-v1';
  const FALLBACK='https://eu-serei-biologo-tutor.brunopdiogo.workers.dev';
@@ -23,9 +23,9 @@ export function initStageMaps(frame){
  function extractMap(answer){
    const lines=String(answer||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
    const points=lines.filter(x=>/^[-•*]\s+/.test(x))
-     .map(x=>x.replace(/^[-•*]\s+/,'').replace(/^\d+[.)]\s+/,'')) .slice(0,7);
+     .map(x=>x.replace(/^[-•*]\s+/,'').replace(/^\d+[.)]\s+/,'')) .slice(0,5);
    const synthesis=lines.find(x=>/^s[ií]ntese\s*:/i.test(x))?.replace(/^s[ií]ntese\s*:\s*/i,'')||'';
-   if(points.length<3||!points.every(x=>x.length>15))throw Error('O tutor não estruturou o mapa em ideias suficientes. Tente novamente.');
+   if(points.length<3||!points.every(x=>x.length>8))throw Error('O tutor não estruturou o mapa em ideias suficientes. Tente novamente.');
    return {points,synthesis};
  }
  function addRichPoint(li,raw){
@@ -56,12 +56,12 @@ export function initStageMaps(frame){
      output.append(p);
    }
    const note=content.ownerDocument.createElement('small');
-   note.textContent='Mapa conceitual elaborado a partir do texto desta etapa; confira os conceitos no material original.';
+   note.textContent='Síntese de revisão elaborada a partir desta etapa. Consulte o texto original para detalhes.';
    output.append(note);
    const controls=box.querySelector('.stage-concept-controls');
    controls.after(output);
-   box.querySelector('.stage-concept-status').textContent='Mapa específico da etapa salvo neste dispositivo.';
-   box.querySelector('.stage-concept-button').textContent='↻ Refazer mapa desta etapa';
+   box.querySelector('.stage-concept-status').textContent='Pontos de fixação salvos neste dispositivo.';
+   box.querySelector('.stage-concept-button').textContent='↻ Refazer pontos de fixação';
  }
  function enhance(){
    const doc=frame.contentDocument,article=doc?.getElementById('articleReader');
@@ -76,13 +76,13 @@ export function initStageMaps(frame){
    if(!id||material.length<150)return;
    box.dataset.contextualMapBound='yes';
    const summary=box.querySelector('summary');
-   if(summary)summary.textContent='🧠 Mapa de ideias e síntese desta etapa';
+   if(summary)summary.textContent='🧠 Pontos de fixação desta etapa';
    const version=hash(stageTitle+'|'+material);
    const cache=readCache(),saved=cache[id];
    const controls=doc.createElement('div');controls.className='stage-concept-controls';
-   const detail=doc.createElement('p');detail.textContent='O mapa anterior era geral e repetia ideias em várias etapas. Crie uma versão baseada exclusivamente nesta etapa.';
+   const detail=doc.createElement('p');detail.textContent='Revise os conceitos essenciais desta etapa em poucas linhas, sem explicações longas.';
    const button=doc.createElement('button');button.type='button';
-   button.className='stage-concept-button';button.textContent='🧠 Gerar mapa desta etapa';
+   button.className='stage-concept-button';button.textContent='🧠 Gerar pontos de fixação';
    const status=doc.createElement('p');status.className='stage-concept-status';
    controls.append(detail,button,status);
    content.prepend(controls);
