@@ -2,6 +2,7 @@
    OAuth via Google Identity Services: token somente em memória.
    Não colocar materiais acadêmicos privados nem chaves secretas no GitHub. */
 import {readState,writeState} from './storage.js';
+import {readMaterial,putRemoteMaterial,validateMaterial} from './private-library.js';
 const FILE='EU_SEREI_BIOLOGO_state_v1.json';
 const ECOLOGY_KEY='ecologia-vegetal-estudos-v1';
 const COURSE_PROGRESS_PREFIX='eu-serei-biologo-course-progress:'; // futuros leitores: apenas progresso, nunca materiais completos
@@ -179,7 +180,7 @@ async function request(url,options={}){
  if(!response.ok)throw Error('Google Drive retornou HTTP '+response.status+': '+(await response.text()).slice(0,180));
  return response;
 }
-async function listFiles(){
+async function listFiles(all=false){
  const files=[];let next='';
  do{
   const query=new URLSearchParams({spaces:'appDataFolder',fields:'nextPageToken,files(id,name,modifiedTime)',pageSize:'100'});
@@ -188,7 +189,7 @@ async function listFiles(){
   const data=await response.json();
   files.push(...(data.files||[]));next=data.nextPageToken||'';
  }while(next);
- return files.filter(f=>f.name===FILE);
+ return all?files:files.filter(f=>f.name===FILE);
 }
 async function download(id){
  const response=await request(BASE+'/'+encodeURIComponent(id)+'?alt=media');
@@ -246,3 +247,68 @@ export async function syncDrive(){
  }finally{syncBusy=false;}
 }
 export function disconnectDrive(){token=null;expiry=0;tokenClient=null;}
+
+/* Os materiais são armazenados no appDataFolder em blocos imutáveis. O manifesto
+   só é publicado após todos os blocos; progresso e anotações continuam separados. */
+const MATERIAL_PREFIX='EU_SEREI_BIOLOGO_material_v1_';
+const CHUNK_PREFIX=MATERIAL_PREFIX+'chunk_';
+const CHUNK_BYTES=1024*1024;
+const hashBytes=async bytes=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
+const validHash=h=>typeof h==='string'&&/^[a-f0-9]{64}$/.test(h);
+async function createMaterialFile(name,blob){
+ const boundary='material'+crypto.randomUUID();
+ const metadata=JSON.stringify({name,mimeType:blob.type||'application/octet-stream',parents:['appDataFolder']});
+ const body=new Blob(['--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+metadata+'\r\n--'+boundary+'\r\nContent-Type: '+(blob.type||'application/octet-stream')+'\r\n\r\n',blob,'\r\n--'+boundary+'--']);
+ const response=await request('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+boundary},body});
+ return response.json();
+}
+async function getMaterialBlob(id){return (await request(BASE+'/'+encodeURIComponent(id)+'?alt=media')).blob();}
+function parseManifest(m,id){
+ if(!isRecord(m)||m.schema!==1||m.courseId!==id||typeof m.name!=='string'||!validHash(m.version)||!Array.isArray(m.chunks)||!m.chunks.length||!Number.isSafeInteger(m.size)||m.size<=0||m.chunks.length!==Math.ceil(m.size/CHUNK_BYTES)||!m.chunks.every(validHash))throw Error('Manifesto inválido: '+id);
+ return m;
+}
+let materialsBusy=false;
+export async function syncMaterials(courses){
+ if(materialsBusy)throw Error('Biblioteca já está sincronizando.');
+ materialsBusy=true;
+ let uploaded=0,downloaded=0;
+ try{
+  const files=await listFiles(true),byName=new Map();
+  for(const f of files){const old=byName.get(f.name);if(!old||timestamp(f.modifiedTime)>=timestamp(old.modifiedTime))byName.set(f.name,f);}
+  for(const course of courses){
+   const id=course.id,prefix=MATERIAL_PREFIX+'manifest_'+id+'_';
+   const local=await readMaterial(id);
+   const remoteFile=files.filter(f=>f.name.startsWith(prefix)&&validHash(f.name.slice(prefix.length))).sort((a,b)=>timestamp(b.modifiedTime)-timestamp(a.modifiedTime)||b.id.localeCompare(a.id))[0];
+   if(local&&(local.pending||!remoteFile)){
+    validateMaterial(id,local.html,course.title);
+    const blob=new Blob([local.html],{type:'text/html;charset=utf-8'}),chunks=[];
+    for(let offset=0;offset<blob.size;offset+=CHUNK_BYTES){
+     const part=blob.slice(offset,offset+CHUNK_BYTES,'application/octet-stream'),hash=await hashBytes(await part.arrayBuffer());
+     chunks.push(hash);
+     if(!byName.has(CHUNK_PREFIX+hash)){const f=await createMaterialFile(CHUNK_PREFIX+hash,part);byName.set(f.name,f);}
+    }
+    const version=await hashBytes(new TextEncoder().encode(chunks.join(':')));
+    const manifest={schema:1,courseId:id,name:local.name,savedAt:local.savedAt,size:blob.size,version,chunks};
+    if(!remoteFile||remoteFile.name!==prefix+version){await createMaterialFile(prefix+version,new Blob([JSON.stringify(manifest)],{type:'application/json'}));uploaded++;}
+    await putRemoteMaterial(id,{...local,version,pending:false},local);
+   }else if(remoteFile&&local?.version!==remoteFile.name.slice(prefix.length)){
+    const m=parseManifest(await download(remoteFile.id),id);
+    if(m.version!==remoteFile.name.slice(prefix.length)||m.version!==await hashBytes(new TextEncoder().encode(m.chunks.join(':'))))throw Error('Manifesto não confere: '+id);
+    const estimate=await navigator.storage?.estimate?.().catch(()=>null);
+    if(estimate?.quota&&m.size>estimate.quota-estimate.usage)throw Error('Espaço insuficiente para baixar '+course.title);
+    const parts=[];
+    for(let i=0;i<m.chunks.length;i++){
+     const hash=m.chunks[i],f=byName.get(CHUNK_PREFIX+hash);
+     if(!f)throw Error('Bloco ausente de '+course.title);
+     const part=await getMaterialBlob(f.id);
+     if(part.size!==Math.min(CHUNK_BYTES,m.size-i*CHUNK_BYTES)||await hashBytes(await part.arrayBuffer())!==hash)throw Error('Bloco corrompido de '+course.title);
+     parts.push(part);
+    }
+    const html=await new Blob(parts,{type:'text/html;charset=utf-8'}).text();
+    validateMaterial(id,html,course.title);
+    if(await putRemoteMaterial(id,{html,name:m.name,savedAt:m.savedAt||new Date().toISOString(),version:m.version,pending:false},local))downloaded++;
+   }
+  }
+  return {uploaded,downloaded};
+ }finally{materialsBusy=false;}
+}

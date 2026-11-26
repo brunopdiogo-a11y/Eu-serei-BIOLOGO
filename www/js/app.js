@@ -163,32 +163,24 @@ function showCourse(c){
  selectedCourse=c.id;
  const detail=$('course-detail');detail.classList.remove('hidden');detail.replaceChildren();
  const title=document.createElement('h2');title.textContent=c.icon+' '+c.title;detail.append(title);
- if(c.id==='ecologia-vegetal'){
-  const intro=document.createElement('p');intro.className='muted';
-  intro.textContent='Estude as seis aulas e 59 etapas sem publicar os PDFs em um repositório público. Importe uma vez o arquivo HTML completo neste navegador. Seu planejamento será preservado.';
-  detail.append(intro);
-  const status=document.createElement('p');status.className='feedback';status.textContent='Verificando sua biblioteca privada…';detail.append(status);
-  const box=document.createElement('div');box.className='button-row';
-  const open=document.createElement('button');open.className='btn primary';open.textContent='📖 Abrir Ecologia Vegetal';open.disabled=true;
-  open.addEventListener('click',()=>location.href='./ecologia-privada.html');
-  const label=document.createElement('label');label.className='btn secondary file-label';label.textContent='⬆ Importar HTML completo';
-  const input=document.createElement('input');input.type='file';input.accept='.html,text/html';input.hidden=true;label.append(input);
-  input.addEventListener('change',async()=>{
-   const file=input.files?.[0];if(!file)return;
-   status.textContent='Importando o material privado neste navegador…';
-   try{const mod=await import('./private-library.js');await mod.saveEcologia(file);status.textContent='✅ Material importado neste dispositivo. Clique em Abrir Ecologia Vegetal.';open.disabled=false;}
-   catch(err){status.textContent='⚠️ '+err.message;}
-   input.value='';
-  });
-  const remove=document.createElement('button');remove.className='btn ghost';remove.textContent='Remover material deste dispositivo';
-  remove.addEventListener('click',async()=>{if(!confirm('Remover o HTML armazenado neste navegador? O progresso de estudo será mantido.'))return;const mod=await import('./private-library.js');await mod.removeEcologia();open.disabled=true;status.textContent='Material removido deste dispositivo.';});
-  const plan=document.createElement('button');plan.className='btn ghost';plan.textContent='📅 Ver metas diárias';plan.addEventListener('click',()=>navigate('planning'));
-  box.append(open,label,plan,remove);detail.append(box);
-  import('./private-library.js').then(m=>m.readEcologia()).then(entry=>{open.disabled=!entry;status.textContent=entry?'✅ '+entry.name+' disponível apenas neste navegador.':'Importe o HTML completo que você baixou para começar.';}).catch(err=>{status.textContent='Biblioteca local indisponível: '+err.message;});
- }else{
-  const desc=document.createElement('p');desc.className='muted';desc.textContent='Estrutura inicial. O conteúdo desta disciplina ainda será importado.';detail.append(desc);
-  const go=document.createElement('button');go.className='btn secondary';go.textContent='📅 Planejar esta disciplina';go.addEventListener('click',()=>{navigate('planning');$('plan-course').value=c.id;fillPlan();});detail.append(go);
- }
+ const intro=document.createElement('p');intro.className='muted';
+ intro.textContent='Importe o HTML completo uma vez. Com o Google Drive conectado, o material será sincronizado entre seus dispositivos. O progresso permanece separado.';detail.append(intro);
+ const status=document.createElement('p');status.className='feedback';status.textContent='Verificando biblioteca privada…';detail.append(status);
+ const box=document.createElement('div');box.className='button-row';
+ const open=document.createElement('button');open.className='btn primary';open.textContent='📖 Abrir '+c.title;open.disabled=true;
+ open.addEventListener('click',()=>location.href='./ecologia-privada.html?course='+encodeURIComponent(c.id));
+ const label=document.createElement('label');label.className='btn secondary file-label';label.textContent='⬆ Importar HTML completo';
+ const input=document.createElement('input');input.type='file';input.accept='.html,text/html';input.hidden=true;label.append(input);
+ input.addEventListener('change',async()=>{
+  const file=input.files?.[0];if(!file)return;input.disabled=true;
+  status.textContent='Importando material…';
+  try{const mod=await import('./private-library.js');await mod.saveMaterial(c.id,file,c.title);open.disabled=false;status.textContent='✅ Material salvo neste dispositivo. Aguardando sincronização com o Drive.';scheduleCloudSync(500);}
+  catch(err){status.textContent='⚠️ '+err.message;}
+  finally{input.value='';input.disabled=false;}
+ });
+ const plan=document.createElement('button');plan.className='btn ghost';plan.textContent='📅 Ver metas diárias';plan.addEventListener('click',()=>{navigate('planning');$('plan-course').value=c.id;fillPlan();});
+ box.append(open,label,plan);detail.append(box);
+ import('./private-library.js').then(m=>m.readMaterial(c.id)).then(entry=>{if(input.disabled)return;open.disabled=!entry;status.textContent=entry?'✅ '+entry.name+(entry.pending?' · aguardando Drive':' · disponível neste dispositivo'):'Importe o HTML ou conecte o Google Drive para recuperar o material.';}).catch(err=>{status.textContent='Biblioteca local indisponível: '+err.message;});
  detail.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function fillSelectors(){['plan-course','session-course'].forEach(id=>{const select=$(id);select.replaceChildren();courses.forEach(c=>{const op=document.createElement('option');op.value=c.id;op.textContent=c.icon+' '+c.title;select.append(op);});});}
@@ -531,7 +523,10 @@ async function runCloudSync(automatic=false){
  try{
   const result=await driveModule.syncDrive();
   state=readState();render();fillPlan();
-  syncStatus('✅ Google Drive: '+new Date(result.at).toLocaleString('pt-BR')+' · '+result.plans+' plano(s), '+result.sessions+' sessões, '+result.stages+' etapas concluídas. Sincronização automática ativa nesta sessão.');
+  let materialStatus='';
+  try{const library=await driveModule.syncMaterials(courses);materialStatus=' · Biblioteca: '+library.uploaded+' enviado(s), '+library.downloaded+' recebido(s).';}catch(e){materialStatus=' · Biblioteca pendente: '+(e?.message||String(e));}
+  if(current==='courses'&&!$('course-detail').classList.contains('hidden')&&!$('course-detail').querySelector('input:disabled'))showCourse(course(selectedCourse));
+  syncStatus('✅ Google Drive: '+new Date(result.at).toLocaleString('pt-BR')+' · '+result.plans+' plano(s), '+result.sessions+' sessões, '+result.stages+' etapas concluídas. Sincronização automática ativa nesta sessão.'+materialStatus);
   autoSyncEnabled=true;
   return true;
  }catch(err){
