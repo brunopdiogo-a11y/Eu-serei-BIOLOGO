@@ -18,12 +18,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    name: Publicar versão Web
+  build:
+    name: Preparar versão Web
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Obter projeto
         uses: actions/checkout@v4
@@ -46,6 +43,14 @@ jobs:
         uses: actions/upload-pages-artifact@v4
         with:
           path: _site
+  deploy:
+    name: Publicar versão Web
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Aguardar disponibilidade do artefato
         env:
           GH_TOKEN: ${{ github.token }}
