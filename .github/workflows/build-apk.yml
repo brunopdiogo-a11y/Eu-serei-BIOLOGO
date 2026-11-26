@@ -12,6 +12,9 @@ on:
       - 'package*.json'
       - 'capacitor.config.json'
       - '.github/workflows/build-apk.yml'
+concurrency:
+  group: android-release-main
+  cancel-in-progress: false
 permissions:
   contents: write
 jobs:
@@ -44,6 +47,7 @@ jobs:
         run: |
           mkdir -p android-web
           cp -a www/. android-web/
+          printf 'export const installedBuild = %s;\n' "$((GITHUB_RUN_NUMBER + 100))" > android-web/js/installed-build.js
           cp android-launcher/index.html android-web/reminders.html
           npx esbuild android-launcher/entry.js --bundle --format=iife --platform=browser --outfile=android-web/main.js
           npx esbuild android-native/speech-bridge.js --bundle --format=esm --platform=browser --outfile=android-web/js/native-speech-runtime.js
@@ -287,3 +291,5 @@ jobs:
             gh release create android-preview --prerelease --title "EU SEREI BIOLOGO - APK assinado" --notes "Assinatura permanente. Para migrar do APK debug antigo, pode ser necessário desinstalar uma única vez. Mantenha a mesma chave de assinatura em todas as versões."
           fi
           gh release upload android-preview EU_SEREI_BIOLOGO.apk --clobber
+          python3 -c 'import json,os; print(json.dumps(dict(versionCode=int(os.environ["GITHUB_RUN_NUMBER"])+100, versionName=json.load(open("package.json"))["version"])))' > android-update.json
+          gh release upload android-preview android-update.json --clobber
