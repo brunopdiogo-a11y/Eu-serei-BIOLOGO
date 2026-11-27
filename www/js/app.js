@@ -163,32 +163,27 @@ function showCourse(c){
  selectedCourse=c.id;
  const detail=$('course-detail');detail.classList.remove('hidden');detail.replaceChildren();
  const title=document.createElement('h2');title.textContent=c.icon+' '+c.title;detail.append(title);
- if(c.id==='ecologia-vegetal'){
   const intro=document.createElement('p');intro.className='muted';
-  intro.textContent='Estude as seis aulas e 59 etapas sem publicar os PDFs em um repositório público. Importe uma vez o arquivo HTML completo neste navegador. Seu planejamento será preservado.';
+  intro.textContent='Importe o HTML da disciplina neste dispositivo. O material fica privado e o progresso de outras matérias é preservado.';
   detail.append(intro);
   const status=document.createElement('p');status.className='feedback';status.textContent='Verificando sua biblioteca privada…';detail.append(status);
   const box=document.createElement('div');box.className='button-row';
-  const open=document.createElement('button');open.className='btn primary';open.textContent='📖 Abrir Ecologia Vegetal';open.disabled=true;
-  open.addEventListener('click',()=>location.href='./ecologia-privada.html');
+  const open=document.createElement('button');open.className='btn primary';open.textContent='📖 Abrir '+c.title;open.disabled=true;
+  open.addEventListener('click',()=>location.href='./ecologia-privada.html?course='+encodeURIComponent(c.id));
   const label=document.createElement('label');label.className='btn secondary file-label';label.textContent='⬆ Importar HTML completo';
   const input=document.createElement('input');input.type='file';input.accept='.html,text/html';input.hidden=true;label.append(input);
   input.addEventListener('change',async()=>{
    const file=input.files?.[0];if(!file)return;
    status.textContent='Importando o material privado neste navegador…';
-   try{const mod=await import('./private-library.js');await mod.saveEcologia(file);status.textContent='✅ Material importado neste dispositivo. Clique em Abrir Ecologia Vegetal.';open.disabled=false;}
+   try{const mod=await import('./private-library.js');await mod.saveCourse(c.id,file);status.textContent='✅ Material importado neste dispositivo. Clique em Abrir disciplina.';open.disabled=false;}
    catch(err){status.textContent='⚠️ '+err.message;}
    input.value='';
   });
   const remove=document.createElement('button');remove.className='btn ghost';remove.textContent='Remover material deste dispositivo';
-  remove.addEventListener('click',async()=>{if(!confirm('Remover o HTML armazenado neste navegador? O progresso de estudo será mantido.'))return;const mod=await import('./private-library.js');await mod.removeEcologia();open.disabled=true;status.textContent='Material removido deste dispositivo.';});
-  const plan=document.createElement('button');plan.className='btn ghost';plan.textContent='📅 Ver metas diárias';plan.addEventListener('click',()=>navigate('planning'));
+  remove.addEventListener('click',async()=>{if(!confirm('Remover o HTML armazenado neste navegador? O progresso de estudo será mantido.'))return;const mod=await import('./private-library.js');await mod.removeCourse(c.id);open.disabled=true;status.textContent='Material removido deste dispositivo.';});
+  const plan=document.createElement('button');plan.className='btn ghost';plan.textContent='📅 Ver metas diárias';plan.addEventListener('click',()=>{navigate('planning');$('plan-course').value=c.id;fillPlan();});
   box.append(open,label,plan,remove);detail.append(box);
-  import('./private-library.js').then(m=>m.readEcologia()).then(entry=>{open.disabled=!entry;status.textContent=entry?'✅ '+entry.name+' disponível apenas neste navegador.':'Importe o HTML completo que você baixou para começar.';}).catch(err=>{status.textContent='Biblioteca local indisponível: '+err.message;});
- }else{
-  const desc=document.createElement('p');desc.className='muted';desc.textContent='Estrutura inicial. O conteúdo desta disciplina ainda será importado.';detail.append(desc);
-  const go=document.createElement('button');go.className='btn secondary';go.textContent='📅 Planejar esta disciplina';go.addEventListener('click',()=>{navigate('planning');$('plan-course').value=c.id;fillPlan();});detail.append(go);
- }
+  import('./private-library.js').then(m=>m.readCourse(c.id)).then(entry=>{open.disabled=!entry;status.textContent=entry?'✅ '+entry.name+' disponível apenas neste navegador.':'Importe o HTML completo que você baixou para começar.';}).catch(err=>{status.textContent='Biblioteca local indisponível: '+err.message;});
  detail.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function fillSelectors(){['plan-course','session-course'].forEach(id=>{const select=$(id);select.replaceChildren();courses.forEach(c=>{const op=document.createElement('option');op.value=c.id;op.textContent=c.icon+' '+c.title;select.append(op);});});}

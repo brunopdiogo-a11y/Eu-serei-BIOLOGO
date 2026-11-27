@@ -4,7 +4,7 @@
  * O código fica no armazenamento local do aplicativo para evitar digitação repetida.
  * Quem tiver acesso ao dispositivo desbloqueado pode usá-lo: não compartilhar o APK/token.
  */
-export function initStudyQuestions(frame){
+export function initStudyQuestions(frame,{courseTitle='Ecologia Vegetal'}={}){
   const $=id=>document.getElementById(id);
   const trigger=$('study-question-trigger'),panel=$('study-question-panel');
   const close=$('study-question-close'),input=$('study-question-message');
@@ -63,8 +63,8 @@ export function initStudyQuestions(frame){
   function stage(){
     try{
       return frame.contentDocument?.getElementById('articleReader')
-        ?.querySelector('h1,h2,.stage-title')?.textContent?.replace(/\s+/g,' ').trim()||'Ecologia Vegetal';
-    }catch{return 'Ecologia Vegetal'}
+        ?.querySelector('h1,h2,.stage-title')?.textContent?.replace(/\s+/g,' ').trim()||courseTitle;
+    }catch{return courseTitle}
   }
   function getSelection(){
     try{
@@ -238,7 +238,7 @@ export function initStudyQuestions(frame){
         const original=messages.slice(0,Math.max(0,position)).reverse().find(m=>m.role==='user');
         const question=(original?.content||msg.imageTopic||'Explique o tema desta aula').slice(0,1200);
         const excerpt=String(original?.excerpt||'').slice(0,900);
-        const prompt=['Estou estudando Ciências Biológicas na disciplina Ecologia Vegetal.',
+        const prompt=['Estou estudando Ciências Biológicas na disciplina '+courseTitle+'.',
           'Minha pergunta: '+question,
           excerpt?'Trecho selecionado do material de estudo: '+excerpt:'',
           'Explique o assunto didaticamente e, quando útil, encontre imagens reais, ilustrações ou diagramas de fontes confiáveis na internet, com links das fontes.'].filter(Boolean).join('\n\n');

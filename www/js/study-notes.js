@@ -29,9 +29,9 @@ export function initStudyNotes(frame,{courseId='ecologia-vegetal',courseTitle='E
  }
  const stageId=()=>{
   try{
-   const saved=JSON.parse(localStorage.getItem('ecologia-vegetal-estudos-v1')||'{}');
+   const saved=JSON.parse(localStorage.getItem(courseId==='ecologia-vegetal'?'ecologia-vegetal-estudos-v1':key)||'{}');
    const id=String(saved.lastStage||'');
-   return /^e[1-6]_\d+$/.test(id)?id:'';
+   return /^(?:e[1-6]_\d+|s\d+)$/.test(id)?id:'';
   }catch{return ''}
  };
  const stageName=()=>{

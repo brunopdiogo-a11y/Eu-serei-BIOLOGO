@@ -277,7 +277,14 @@ header.reader-toolbar{flex:none;height:auto;min-height:55px}
   </footer>
 </section>
 <script type="module">
-import {readEcologia} from './js/private-library.js';
+import {readCourse,prepareReader,progressKey} from './js/private-library.js';
+import {courses} from './js/data.js';
+const courseId=new URLSearchParams(location.search).get('course')||'ecologia-vegetal';
+const activeCourse=courses.find(c=>c.id===courseId);
+const courseTitle=activeCourse?.title||'Disciplina';
+document.title=courseTitle+' · EU SEREI BIOLOGO';
+document.getElementById('reader').title='Aulas e atividades de '+courseTitle;
+document.getElementById('study-question-title').textContent='🧠 Tutor de '+courseTitle;
 import {initStageSpeech} from './js/voice-reader.js';
 import {bindLessonPlanning} from './js/lesson-planning.js';
 import {initReadingLayout} from './js/reading-layout.js';
@@ -360,7 +367,7 @@ function initNoteReturn(frame){
   context=JSON.parse(sessionStorage.getItem(KEY)||'null');
   sessionStorage.removeItem(KEY);
  }catch{return;}
- if(!context||context.courseId!=='ecologia-vegetal')return;
+ if(!context||context.courseId!==courseId)return;
  const bar=$('study-note-return'),line=$('study-note-return-text');
  const label=context.stage||'etapa desta anotação';
  bar.hidden=false;
@@ -390,7 +397,7 @@ function initNoteReturn(frame){
   const article=doc.getElementById('articleReader');
   const isCorrectStage=()=>{
    if(!doc.getElementById('view-study')?.classList.contains('on'))return false;
-   const stored=JSON.parse(localStorage.getItem('ecologia-vegetal-estudos-v1')||'{}');
+   const stored=JSON.parse(localStorage.getItem(progressKey(courseId))||'{}');
    return id&&stored.lastStage===id||targetTitle&&article?.textContent?.includes(targetTitle);
   };
   let checked=0;
@@ -452,7 +459,7 @@ function watchReaderActivity(frame){
 function collapseClock(collapse){clock.classList.toggle('collapsed',collapse);clockSummary.setAttribute('aria-expanded',String(!collapse));}
 clockSummary.addEventListener('click',()=>collapseClock(!clock.classList.contains('collapsed')));
 function checkpoint(){if(!running)return;const n=Date.now(),diff=Math.max(0,Math.min(24*3600000,n-last));last=n;pendingMs+=diff;shownMs+=diff;if(pendingMs>=5000)commit();display();}
-function commit(){const m=pendingMs/60000;if(m<=0)return;try{const s=JSON.parse(localStorage.getItem(storageKey)||'{}');if(!Array.isArray(s.sessions))s.sessions=[];const d=new Date(),date=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');const id=crypto.randomUUID?.()||('study-'+Date.now()+'-'+Math.random());s.sessions.push({id,courseId:'ecologia-vegetal',type:'reading',minutes:Math.round(m*10000)/10000,date,createdAt:new Date().toISOString(),source:'private-reader'});s.schemaVersion=1;s.updatedAt=new Date().toISOString();localStorage.setItem(storageKey,JSON.stringify(s));pendingMs=0;}catch(err){$('clock-status').textContent='Falha ao salvar · faça backup';}}
+function commit(){const m=pendingMs/60000;if(m<=0)return;try{const s=JSON.parse(localStorage.getItem(storageKey)||'{}');if(!Array.isArray(s.sessions))s.sessions=[];const d=new Date(),date=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');const id=crypto.randomUUID?.()||('study-'+Date.now()+'-'+Math.random());s.sessions.push({id,courseId,type:'reading',minutes:Math.round(m*10000)/10000,date,createdAt:new Date().toISOString(),source:'private-reader'});s.schemaVersion=1;s.updatedAt=new Date().toISOString();localStorage.setItem(storageKey,JSON.stringify(s));pendingMs=0;}catch(err){$('clock-status').textContent='Falha ao salvar · faça backup';}}
 function pause(){checkpoint();running=false;clearInterval(ticker);commit();display();}
 function resume(){if(running)return;clearReadingReminder();running=true;last=Date.now();ticker=setInterval(checkpoint,1000);display();collapseClock(true);}
 $('toggle').onclick=()=>{if(running){pause();collapseClock(false);}else resume();};
@@ -465,9 +472,9 @@ document.addEventListener('visibilitychange',()=>{
 });
 window.addEventListener('pagehide',pause);
 try{
- const entry=await readEcologia();if(!entry)throw Error('Material não encontrado. Volte à biblioteca e importe o HTML completo de Ecologia Vegetal.');
+ const entry=await readCourse(courseId);if(!entry)throw Error('Material não encontrado. Volte à biblioteca e importe o HTML desta disciplina.');
  // Documento escolhido pelo usuário, não publicado no GitHub.
- const frame=$('reader');initNoteReturn(frame);watchReaderActivity(frame);initStudyQuestions(frame);initStudyNotes(frame);initStageSpeech(frame,$('voice-panel'));bindLessonPlanning(frame);initReadingLayout(frame);initStageMaps(frame);frame.srcdoc=entry.html;frame.classList.remove('hide');$('clock').classList.remove('hide');$('message').remove();display();
+ const frame=$('reader');initNoteReturn(frame);watchReaderActivity(frame);initStudyQuestions(frame,{courseTitle});initStudyNotes(frame,{courseId,courseTitle});initStageSpeech(frame,$('voice-panel'));if(courseId==='ecologia-vegetal'){bindLessonPlanning(frame);initReadingLayout(frame);initStageMaps(frame);}frame.srcdoc=prepareReader(entry,courseId);frame.classList.remove('hide');$('clock').classList.remove('hide');$('message').remove();display();
  // O estudante inicia a contagem manualmente no botão Iniciar.
  // Ao ocultar, fechar a aba ou sair da página, a sessão é pausada e registrada.
 }catch(err){$('message').textContent='Não foi possível abrir: '+err.message;}
